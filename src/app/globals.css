@@ -24,3 +24,15 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Make PWA icons circular */
+.app-icon {
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+/* Ensure PWA manifest icons are circular */
+[data-pwa-icon] {
+  border-radius: 50%;
+  overflow: hidden;
+}
