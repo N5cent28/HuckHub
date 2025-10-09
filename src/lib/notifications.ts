@@ -50,7 +50,7 @@ export function showNotification(title: string, options?: NotificationOptions) {
     try {
       const notification = new Notification(title, {
         icon: '/icon-192x192.png',
-        badge: '/icon-24x24.ico',
+        badge: '/icon-36x36.png',
         requireInteraction: true, // Keep notification until user interacts
         silent: false, // Make sure it makes sound
         ...options
