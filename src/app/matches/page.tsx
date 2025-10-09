@@ -263,8 +263,8 @@ function RequestButton({ targetId, seekingSessionId }: { targetId: string; seeki
 
   return (
     <div className="relative">
-      <button onClick={()=>setOpen(true)} className="p-1 rounded-md hover:bg-gray-700">
-        <Image src="/icon-24x24.ico" alt="request" width={24} height={24} />
+      <button onClick={()=>setOpen(true)} className="p-2 rounded-md hover:bg-gray-700">
+        <Image src="/icon-24x24.ico" alt="request" width={32} height={32} />
       </button>
       {open && (
         <div className="absolute right-0 mt-2 bg-gray-900 border border-gray-700 rounded-md p-3 w-64 z-10">
