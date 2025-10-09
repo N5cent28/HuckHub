@@ -1,103 +1,150 @@
+"use client";
+
 import Image from "next/image";
+import Link from "next/link";
+import { useState } from "react";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [showDonationModal, setShowDonationModal] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
+      <div className="container mx-auto px-4 py-16">
+        <div className="text-center">
+          {/* Logo */}
+          <div className="flex justify-center mb-8">
             <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+              src="/icon-192x192.png"
+              alt="HuckHub Logo"
+              width={120}
+              height={120}
+              priority
+              className="rounded-full"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </div>
+          
+          {/* Main heading */}
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
+            HuckHub
+          </h1>
+          <h2 className="text-xl md:text-2xl text-gray-300 mb-8">
+            Madison community throwing
+          </h2>
+          
+          {/* Description */}
+          <p className="text-lg text-gray-300 mb-12 max-w-2xl mx-auto">
+            Find throwing partners for spontaneous tossing at your favorite local parks!
+          </p>
+          
+          {/* Features */}
+          <div className="grid md:grid-cols-2 gap-6 mb-12 max-w-4xl mx-auto">
+            <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-lg">
+              <h3 className="font-semibold text-lg mb-2 text-white">Real-time Matching</h3>
+              <p className="text-gray-300">Find players looking to throw right now</p>
+            </div>
+            <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-lg">
+              <h3 className="font-semibold text-lg mb-2 text-white">Skill-based Pairing</h3>
+              <p className="text-gray-300">Match with players at your skill level</p>
+            </div>
+            <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-lg">
+              <h3 className="font-semibold text-lg mb-2 text-white">Location-based Suggestions</h3>
+              <p className="text-gray-300">Find partners at your preferred parks</p>
+            </div>
+            <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-lg">
+              <h3 className="font-semibold text-lg mb-2 text-white">Instant Notifications</h3>
+              <p className="text-gray-300">Get notified instantly when someone wants to throw</p>
+            </div>
+          </div>
+          
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/auth/signup"
+              className="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg"
+            >
+              Sign Up
+            </Link>
+            <Link
+              href="/auth/login"
+              className="border-2 border-green-500 text-green-500 hover:bg-green-500 hover:text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg"
+            >
+              Login
+            </Link>
+            <button
+              onClick={() => setShowDonationModal(true)}
+              className="border-2 border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg"
+            >
+              Donate
+            </button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+
+      {/* Donation Modal */}
+      {showDonationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg max-w-md w-full p-6 shadow-xl">
+            <div className="text-center">
+              <h3 className="text-2xl font-bold text-white mb-4">Support HuckHub 💝</h3>
+              
+              <div className="text-gray-300 mb-6 space-y-3 text-left">
+                <p>
+                  Hey! I'm Noah, the creator of HuckHub. I hope you enjoy using this app to become 
+                  stronger throwers and to connect with Madison's ultimate community!
+                </p>
+                <p>
+                  With your participation, I truly believe we can make an impact on Madison's throwing 
+                  scene—from newer players who don't yet have tossing partners to frisbee fanatics 
+                  like me, it could help us all spend more time throwing and place names with familiar faces.
+                </p>
+                <p>
+                  If you like what you see and want to help keep it going, any contribution is deeply 
+                  appreciated. Your support covers hosting and domain costs—and helps keep this 
+                  unemployed dumpster-diver fed while I keep improving the app for everyone :)
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <a
+                  href="https://account.venmo.com/u/Noah-Nicol"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                >
+                  💙 Venmo (@Noah-Nicol)
+                </a>
+                <div className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                  <div className="text-center">
+                    <div className="font-bold mb-1">💛 PayPal</div>
+                    <div className="text-sm">noahryannicol@gmail.com</div>
+                  </div>
+                </div>
+                <div className="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                  <div className="text-center">
+                    <div className="font-bold mb-1">💚 Wise (Bank Transfer)</div>
+                    <div className="text-sm">Noah Nicol</div>
+                    <div className="text-xs mt-1">
+                      Account: 369250495217110<br/>
+                      Routing: 084009519
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-400 mt-4">
+                Thank you so much for being part of the community! 🙏
+              </p>
+
+              <button
+                onClick={() => setShowDonationModal(false)}
+                className="mt-4 text-gray-400 hover:text-gray-300 text-sm underline"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
