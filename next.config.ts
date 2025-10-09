@@ -17,10 +17,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Ensure proper handling of API routes
-  experimental: {
-    esmExternals: false,
-  },
 };
 
 export default withPWA({

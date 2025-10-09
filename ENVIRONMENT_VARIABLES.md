@@ -16,6 +16,9 @@ Set these in your Netlify dashboard under Site Settings > Environment Variables:
 - `SMTP_PASS` - Your SMTP password
 - `FROM_EMAIL` - Email address to send from
 
+### App Configuration
+- `NEXT_PUBLIC_APP_URL` - Your production app URL (set to `https://huckhub.netlify.app`)
+
 ### Optional
 - `CUSTOM_KEY` - Any custom key you might need
 

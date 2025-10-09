@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
     
     try {
       // Send notification to database (will trigger real-time updates)
-      const notificationRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/send`, {
+      const notificationRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://huckhub.netlify.app'}/api/notifications/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

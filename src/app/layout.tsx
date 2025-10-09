@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HuckHub - Madison Ultimate",
+  title: "HuckHub - Madison",
   description: "Find ultimate frisbee throwing partners in Madison, WI",
   manifest: "/manifest.json",
   appleWebApp: {

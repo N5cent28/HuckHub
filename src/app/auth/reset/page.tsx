@@ -16,7 +16,7 @@ export default function ResetPassword() {
     setMessage(null);
 
     try {
-      const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/update-password`;
+      const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL || "https://huckhub.netlify.app"}/auth/update-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) {
         setMessage(error.message);

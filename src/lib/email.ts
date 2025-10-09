@@ -59,13 +59,13 @@ export async function sendMatchRequestEmail({
               
               <p>To respond to this request:</p>
               <ol>
-                <li>Log into HuckHub at <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}">${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}</a></li>
+                <li>Log into HuckHub at <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://huckhub.netlify.app'}">${process.env.NEXT_PUBLIC_APP_URL || 'https://huckhub.netlify.app'}</a></li>
                 <li>Go to your dashboard to see pending requests</li>
                 <li>Accept or decline the request</li>
               </ol>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard" class="button">View Request in HuckHub</a>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://huckhub.netlify.app'}/dashboard" class="button">View Request in HuckHub</a>
               </div>
               
               <div class="footer">
