@@ -59,12 +59,16 @@ export default function Matches() {
 
       // Always load fallback suggested profiles (non-active but available now)
       try {
+        console.log('[DEBUG] Making fallback API call with token:', !!accessToken);
         const f = await fetch("/api/profile/available", { 
           headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} 
         });
         if (f.ok) {
           const fj = await f.json();
           console.log('[DEBUG] Fallback API response:', fj);
+          console.log('[DEBUG] Response headers - User ID:', f.headers.get('X-Debug-User-ID'));
+          console.log('[DEBUG] Response headers - Blocked count:', f.headers.get('X-Debug-Blocked-Count'));
+          console.log('[DEBUG] Raw profiles from server:', fj.profiles?.map((p:any) => ({ id: p.id, name: p.full_name })));
           // remove currently active and myself from fallback list
           const activeIds = new Set((json.sessions || []).map((s:any)=>s.user_id));
           console.log('[DEBUG] Active user IDs:', Array.from(activeIds));
@@ -73,6 +77,8 @@ export default function Matches() {
           console.log('[DEBUG] Filtered fallback users:', filtered.length, filtered.map(p => p.full_name));
           setFallback(filtered);
           setFallbackContext({ day: fj.day, slot: fj.slot });
+        } else {
+          console.error('[DEBUG] Fallback API failed:', f.status, await f.text());
         }
       } catch (e) {
         console.error('[DEBUG] Fallback API error:', e);

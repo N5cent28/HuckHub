@@ -13,6 +13,7 @@ function currentDay(): string {
 }
 
 export async function GET(req: NextRequest) {
+  console.log('[SERVER DEBUG] /api/profile/available called');
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
   const slot = currentSlot();
   const day = currentDay();
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
   });
 
   // Filter out blocked users if we have a current user
+  let blockedIds: Set<string> = new Set();
   if (currentUserId) {
     console.log('[DEBUG] Current user ID:', currentUserId);
     const { data: blockedUsers } = await sb
@@ -47,7 +49,7 @@ export async function GET(req: NextRequest) {
       .eq("blocker_id", currentUserId);
     
     console.log('[DEBUG] Blocked users:', blockedUsers);
-    const blockedIds = new Set(blockedUsers?.map(b => b.blocked_id) || []);
+    blockedIds = new Set(blockedUsers?.map(b => b.blocked_id) || []);
     console.log('[DEBUG] Blocked IDs:', Array.from(blockedIds));
     
     const beforeFilter = filtered.length;
@@ -59,7 +61,12 @@ export async function GET(req: NextRequest) {
     console.log('[DEBUG] No current user ID, skipping block filter');
   }
   
-  return NextResponse.json({ profiles: filtered, day, slot });
+  return NextResponse.json({ profiles: filtered, day, slot }, {
+    headers: {
+      'X-Debug-User-ID': currentUserId || 'none',
+      'X-Debug-Blocked-Count': blockedIds ? blockedIds.size.toString() : '0'
+    }
+  });
 }
 
 
