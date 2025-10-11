@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HuckHub - Madison Ultimate Throwing Partner Finder</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #10b981;
+        }
+        .logo {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+        .tagline {
+            font-size: 1.2em;
+            color: #666;
+            font-style: italic;
+        }
+        h1 {
+            color: #2d3748;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h2 {
+            color: #10b981;
+            margin-top: 25px;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+        h3 {
+            color: #4a5568;
+            margin-top: 20px;
+            margin-bottom: 8px;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .feature-card {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
+        .feature-card h3 {
+            margin-top: 0;
+            color: #10b981;
+        }
+        .safety-section {
+            background: #fef5e7;
+            padding: 25px;
+            border-radius: 8px;
+            border-left: 4px solid #f6ad55;
+            margin: 25px 0;
+        }
+        .safety-section h2 {
+            color: #c05621;
+            margin-top: 0;
+        }
+        .safety-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .safety-item {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #f6ad55;
+        }
+        .safety-item h4 {
+            margin: 0 0 8px 0;
+            color: #c05621;
+        }
+        .benefits-list {
+            background: #e6fffa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+            margin: 20px 0;
+        }
+        .benefits-list h2 {
+            color: #10b981;
+            margin-top: 0;
+        }
+        .benefits-list ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .benefits-list li {
+            margin-bottom: 8px;
+        }
+        .tech-specs {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .tech-specs h2 {
+            color: #4a5568;
+            margin-top: 0;
+        }
+        .contact-info {
+            background: #10b981;
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 30px;
+        }
+        .contact-info h2 {
+            color: white;
+            margin-top: 0;
+        }
+        .contact-info a {
+            color: white;
+            text-decoration: underline;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 8px;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #10b981;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        .mission-alignment {
+            background: #e6fffa;
+            padding: 25px;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+            margin: 25px 0;
+        }
+        .mission-alignment h2 {
+            color: #10b981;
+            margin-top: 0;
+        }
+        .mission-quote {
+            font-style: italic;
+            color: #4a5568;
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            border-left: 3px solid #10b981;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🥏 HuckHub</div>
+            <div class="tagline">Madison's Ultimate Throwing Partner Finder</div>
+        </div>
+
+        <h1>Connecting Madison's Ultimate Community for Better Throwing Skills</h1>
+        
+        <p>HuckHub is a Progressive Web App designed specifically for Madison's ultimate frisbee community to help players find throwing partners, improve their skills, and strengthen connections within our sport.</p>
+
+        <div class="mission-alignment">
+            <h2>Alignment with MUFA's Mission</h2>
+            <div class="mission-quote">
+                "To serve the Madison area Ultimate community, representing the interests of the sport and players. To maintain the Spirit of the Game as the central governing principal of the sport. To promote the growth and the development of the sport of Ultimate."
+            </div>
+            <p>HuckHub directly supports MUFA's mission by:</p>
+            <ul>
+                <li><strong>Serving the Community:</strong> Providing a free tool that benefits all Madison ultimate players</li>
+                <li><strong>Promoting Growth:</strong> Helping players develop skills between league seasons</li>
+                <li><strong>Spirit of the Game:</strong> Encouraging positive, respectful interactions through safety features</li>
+                <li><strong>Development:</strong> Creating opportunities for skill improvement and community building</li>
+            </ul>
+        </div>
+
+        <h2>Key Features</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>📍 Location-Based Matching</h3>
+                <p>Find throwing partners based on your location and preferred Madison parks. Includes both MUFA venues and local parks.</p>
+            </div>
+            <div class="feature-card">
+                <h3>🎯 Skill Level Compatibility</h3>
+                <p>Match with players of similar skill levels (1-10 scale) for productive practice sessions that benefit both players.</p>
+            </div>
+            <div class="feature-card">
+                <h3>🏆 League Level Preferences</h3>
+                <p>Specify your league experience: MUFA, college/club, recreational, or beginner to find compatible partners.</p>
+            </div>
+            <div class="feature-card">
+                <h3>⏰ Availability Matching</h3>
+                <p>Set your weekly availability and find partners who are free during the same time slots.</p>
+            </div>
+            <div class="feature-card">
+                <h3>📱 Progressive Web App</h3>
+                <p>Works on any device - installs like a native app but accessible through any web browser.</p>
+            </div>
+            <div class="feature-card">
+                <h3>🔄 Real-Time Updates</h3>
+                <p>Get instant notifications when someone wants to throw with you, with email and push notifications.</p>
+            </div>
+        </div>
+
+        <div class="benefits-list">
+            <h2>Benefits for MUFA Members</h2>
+            <ul>
+                <li><strong>Skill Development:</strong> Consistent throwing practice improves game performance</li>
+                <li><strong>Community Building:</strong> Connect with players outside your usual league teams</li>
+                <li><strong>New Player Support:</strong> Help newer players find mentors and practice partners</li>
+                <li><strong>Off-Season Engagement:</strong> Keep players active between MUFA league seasons</li>
+                <li><strong>Park Discovery:</strong> Learn about new throwing locations in Madison</li>
+                <li><strong>Flexible Scheduling:</strong> Find partners for impromptu throwing sessions</li>
+            </ul>
+        </div>
+
+        <div class="safety-section">
+            <h2>🛡️ Safety & Community Standards</h2>
+            <p>HuckHub prioritizes user safety and maintains high community standards:</p>
+            
+            <div class="safety-features">
+                <div class="safety-item">
+                    <h4>Age Verification</h4>
+                    <p>All users must be 18+ with age verification during signup</p>
+                </div>
+                <div class="safety-item">
+                    <h4>User Reporting</h4>
+                    <p>Easy reporting system for inappropriate behavior with admin review</p>
+                </div>
+                <div class="safety-item">
+                    <h4>Blocking System</h4>
+                    <p>Users can block others and they won't appear in future matches</p>
+                </div>
+                <div class="safety-item">
+                    <h4>Safety Guidelines</h4>
+                    <p>Clear guidelines for safe meetings in public parks during daylight</p>
+                </div>
+                <div class="safety-item">
+                    <h4>Admin Moderation</h4>
+                    <p>Active moderation with ability to ban users who violate community standards</p>
+                </div>
+                <div class="safety-item">
+                    <h4>Privacy Protection</h4>
+                    <p>No tracking, minimal data collection, and clear privacy policy</p>
+                </div>
+            </div>
+            
+            <h3>Safety Guidelines for Users</h3>
+            <ul>
+                <li>Meet in public parks during daylight hours</li>
+                <li>Tell someone where you're going</li>
+                <li>Trust your instincts - if something feels wrong, leave</li>
+                <li>Report any inappropriate behavior immediately</li>
+                <li>Users meet at their own risk (clearly stated in terms)</li>
+            </ul>
+        </div>
+
+        <h2>Technical Specifications</h2>
+        <div class="tech-specs">
+            <h3>Platform & Accessibility</h3>
+            <ul>
+                <li><strong>Progressive Web App:</strong> Works on iOS, Android, and desktop browsers</li>
+                <li><strong>No App Store Required:</strong> Install directly from web browser</li>
+                <li><strong>Offline Capable:</strong> Basic functionality works without internet</li>
+                <li><strong>Responsive Design:</strong> Optimized for mobile and desktop use</li>
+            </ul>
+            
+            <h3>Data & Privacy</h3>
+            <ul>
+                <li><strong>Minimal Data Collection:</strong> Only essential information for matching</li>
+                <li><strong>No Tracking:</strong> No analytics, cookies, or third-party tracking</li>
+                <li><strong>Secure Storage:</strong> Data encrypted in transit and at rest via Supabase</li>
+                <li><strong>User Control:</strong> Users can delete their accounts and data at any time</li>
+            </ul>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">100%</div>
+                <div class="stat-label">Free to Use</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">18+</div>
+                <div class="stat-label">Age Requirement</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">0</div>
+                <div class="stat-label">Tracking Cookies</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">24/7</div>
+                <div class="stat-label">Available</div>
+            </div>
+        </div>
+
+        <h2>How It Works</h2>
+        <ol>
+            <li><strong>Sign Up:</strong> Create account with email verification and age confirmation</li>
+            <li><strong>Complete Profile:</strong> Set skill level, league experience, availability, and preferred parks</li>
+            <li><strong>Find Partners:</strong> Browse available players or start seeking to be found</li>
+            <li><strong>Connect:</strong> Send throwing requests with optional personal messages</li>
+            <li><strong>Meet & Throw:</strong> Coordinate meeting times and locations</li>
+            <li><strong>Build Community:</strong> Develop ongoing throwing relationships</li>
+        </ol>
+
+        <h2>Integration with MUFA</h2>
+        <p>HuckHub is designed to complement MUFA's existing programs:</p>
+        <ul>
+            <li><strong>League Preparation:</strong> Help players improve skills before league seasons</li>
+            <li><strong>Off-Season Engagement:</strong> Keep community active between league periods</li>
+            <li><strong>New Player Onboarding:</strong> Connect newcomers with experienced players</li>
+            <li><strong>Skill Development:</strong> Support MUFA's mission of promoting ultimate growth</li>
+            <li><strong>Community Building:</strong> Strengthen connections within the Madison ultimate community</li>
+        </ul>
+
+        <div class="contact-info">
+            <h2>Get Started Today</h2>
+            <p>HuckHub is live and ready to help Madison's ultimate community improve their throwing skills!</p>
+            <p><strong>Website:</strong> <a href="https://huckhub.netlify.app">https://huckhub.netlify.app</a></p>
+            <p><strong>Contact:</strong> <a href="mailto:noahryannicol@gmail.com">noahryannicol@gmail.com</a></p>
+            <p><em>Created by Noah Nicol, Madison ultimate player and community member</em></p>
+            <p><em>© 2024 HuckHub</em></p>
+        </div>
+    </div>
+</body>
+</html>

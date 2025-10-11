@@ -1,0 +1,35 @@
+Subject: Introducing HuckHub - A New Tool to Help Madison's Ultimate Community Improve Their Skills
+
+Dear MUFA Leadership Team,
+
+I hope this email finds you well. My name is Noah Nicol, and I'm a member of the Madison ultimate community who has developed HuckHub, a Progressive Web App designed to help ultimate players in Madison improve their throwing skills by connecting them with practice partners.
+
+As someone who has participated in MUFA leagues and pickup games, I've noticed that many players, especially newer ones, struggle to find consistent throwing partners to develop their skills. HuckHub addresses this gap by creating a platform where players can:
+
+• Find nearby throwing partners based on location and availability
+• Connect with players of similar skill levels for focused practice
+• Discover new throwing locations and parks in the Madison area
+• Build stronger connections within our ultimate community
+
+The app is specifically designed for the Madison area and includes features like:
+- Location-based matching using Madison parks
+- Skill level compatibility (from beginner to advanced)
+- League level preferences (MUFA, college/club, etc.)
+- Safety features including user reporting and blocking
+- Privacy-focused design with no tracking or analytics
+
+I've attached a detailed overview document that outlines the app's features, safety measures, and how it aligns with MUFA's mission to promote the growth and development of ultimate in Madison.
+
+I would love the opportunity to discuss how HuckHub could complement MUFA's existing programs and potentially help your members improve their skills between league seasons. The app is already live and being used by Madison players, and I believe it could be a valuable resource for the community you serve.
+
+Would you be interested in a brief demonstration or discussion about how HuckHub could benefit MUFA members? I'm happy to meet at your convenience or provide additional information.
+
+Thank you for your time and for all the work MUFA does to support ultimate in Madison. I look forward to hearing from you.
+
+Best regards,
+Noah Nicol
+Creator of HuckHub
+Email: noahryannicol@gmail.com
+Website: https://huckhub.netlify.app
+
+P.S. HuckHub is completely free to use and I have no commercial interests - I created it purely to help strengthen our ultimate community's throwing skills and connections.
