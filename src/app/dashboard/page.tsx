@@ -33,6 +33,12 @@ export default function Dashboard() {
             .single();
           setProfile(profileData);
           
+          // Check if name is empty and redirect to profile setup
+          if (!profileData?.full_name || profileData.full_name.trim() === "") {
+            router.push("/profile/setup");
+            return;
+          }
+          
           // Start listening for notifications
           startNotificationListener().then(channel => {
             setNotificationChannel(channel);

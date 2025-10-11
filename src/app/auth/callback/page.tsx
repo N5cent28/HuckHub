@@ -23,7 +23,7 @@ export default function AuthCallback() {
           // Check if user has a profile
           const { data: profile } = await supabase
             .from("profiles")
-            .select("id")
+            .select("id, full_name")
             .eq("id", data.session.user.id)
             .maybeSingle();
 
@@ -33,10 +33,17 @@ export default function AuthCallback() {
               id: data.session.user.id,
               email: data.session.user.email,
             }).eq("id", data.session.user.id);
+            router.push("/profile/setup");
+            return;
           }
 
-          if (profile) router.push("/dashboard");
-          else router.push("/profile/setup");
+          // Check if name is empty and redirect to profile setup
+          if (!profile.full_name || profile.full_name.trim() === "") {
+            router.push("/profile/setup");
+            return;
+          }
+
+          router.push("/dashboard");
         } else {
           router.push("/auth/login");
         }

@@ -92,6 +92,12 @@ export default function ProfileSetup() {
     if (!userId) return;
     setMessage("");
     
+    // Custom validation for name field
+    if (!form.full_name || form.full_name.trim() === "") {
+      setMessage("Name required for account setup");
+      return;
+    }
+    
     // Get user's current location to fetch nearby parks
     let preferredParks: any[] = [];
     
@@ -290,7 +296,7 @@ export default function ProfileSetup() {
             </button>
           </div>
 
-          {message && <p className="text-red-400">{message}</p>}
+          {message && <p className="text-red-400 text-center font-medium">{message}</p>}
         </form>
       </div>
     </div>
