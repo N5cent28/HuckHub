@@ -62,7 +62,8 @@ export default function PrivacyPolicy() {
                 We take reasonable measures to protect your information:
               </p>
               <ul className="text-gray-300 mb-4 list-disc list-inside space-y-2">
-                <li>All data is encrypted in transit and at rest</li>
+                <li>Data is encrypted in transit using HTTPS/TLS</li>
+                <li>Data is encrypted at rest using Supabase's security features</li>
                 <li>We use secure authentication and authorization</li>
                 <li>Access to your data is limited to necessary operations</li>
                 <li>We regularly review and update our security practices</li>
@@ -76,7 +77,6 @@ export default function PrivacyPolicy() {
                 <li><strong>Access:</strong> View the personal information we have about you</li>
                 <li><strong>Correction:</strong> Update or correct your information</li>
                 <li><strong>Deletion:</strong> Request deletion of your account and data</li>
-                <li><strong>Portability:</strong> Export your data in a readable format</li>
                 <li><strong>Opt-out:</strong> Unsubscribe from non-essential communications</li>
               </ul>
             </section>
@@ -91,7 +91,14 @@ export default function PrivacyPolicy() {
             <section className="mb-8">
               <h3 className="text-xl font-semibold text-white mb-4">7. Cookies and Tracking</h3>
               <p className="text-gray-300 mb-4">
-                We use essential cookies for authentication and app functionality. We do not use tracking cookies or third-party analytics that collect personal information.
+                We use essential cookies for authentication and app functionality:
+              </p>
+              <ul className="text-gray-300 mb-4 list-disc list-inside space-y-2">
+                <li><strong>Session Cookies:</strong> Used by Supabase for user authentication and maintaining login state</li>
+                <li><strong>Functional Cookies:</strong> Used to remember user preferences and app settings</li>
+              </ul>
+              <p className="text-gray-300 mb-4">
+                We do not use tracking cookies or third-party analytics that collect personal information. You can disable cookies in your browser settings, but this may affect app functionality.
               </p>
             </section>
 

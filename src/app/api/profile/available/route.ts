@@ -40,13 +40,23 @@ export async function GET(req: NextRequest) {
 
   // Filter out blocked users if we have a current user
   if (currentUserId) {
+    console.log('[DEBUG] Current user ID:', currentUserId);
     const { data: blockedUsers } = await sb
       .from("user_blocks")
       .select("blocked_id")
       .eq("blocker_id", currentUserId);
     
+    console.log('[DEBUG] Blocked users:', blockedUsers);
     const blockedIds = new Set(blockedUsers?.map(b => b.blocked_id) || []);
+    console.log('[DEBUG] Blocked IDs:', Array.from(blockedIds));
+    
+    const beforeFilter = filtered.length;
     filtered = filtered.filter(p => !blockedIds.has(p.id));
+    const afterFilter = filtered.length;
+    
+    console.log('[DEBUG] Filtered profiles before:', beforeFilter, 'after:', afterFilter);
+  } else {
+    console.log('[DEBUG] No current user ID, skipping block filter');
   }
   
   return NextResponse.json({ profiles: filtered, day, slot });
