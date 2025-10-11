@@ -80,6 +80,35 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Footer */}
+      <footer className="bg-gray-800 border-t border-gray-700 py-8 mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center mb-4 md:mb-0">
+              <Image
+                src="/icon-192x192.png"
+                alt="HuckHub Logo"
+                width={32}
+                height={32}
+                className="rounded-full mr-3"
+              />
+              <span className="text-gray-300 text-sm">© 2024 HuckHub. All rights reserved.</span>
+            </div>
+            <div className="flex space-x-6">
+              <Link href="/terms" className="text-gray-400 hover:text-gray-300 text-sm">
+                Terms of Service
+              </Link>
+              <Link href="/privacy" className="text-gray-400 hover:text-gray-300 text-sm">
+                Privacy Policy
+              </Link>
+              <a href="mailto:noahryannicol@gmail.com" className="text-gray-400 hover:text-gray-300 text-sm">
+                Contact
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+
       {/* Donation Modal */}
       {showDonationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

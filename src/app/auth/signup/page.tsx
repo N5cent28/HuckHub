@@ -11,12 +11,20 @@ export default function SignUp() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [ageVerified, setAgeVerified] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const router = useRouter();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
+
+    if (!ageVerified || !termsAccepted) {
+      setMessage("Please confirm you are 18+ and accept our terms to continue");
+      setLoading(false);
+      return;
+    }
 
     try {
       const { error } = await supabase.auth.signUp({
@@ -100,6 +108,57 @@ export default function SignUp() {
               {message}
             </div>
           )}
+
+          {/* Age Verification and Terms */}
+          <div className="space-y-4">
+            <div className="flex items-start">
+              <input
+                id="age-verification"
+                type="checkbox"
+                checked={ageVerified}
+                onChange={(e) => setAgeVerified(e.target.checked)}
+                className="mt-1 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-600 bg-gray-800 rounded"
+              />
+              <label htmlFor="age-verification" className="ml-3 text-sm text-gray-300">
+                I confirm that I am at least 18 years old
+              </label>
+            </div>
+
+            <div className="flex items-start">
+              <input
+                id="terms-acceptance"
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                className="mt-1 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-600 bg-gray-800 rounded"
+              />
+              <label htmlFor="terms-acceptance" className="ml-3 text-sm text-gray-300">
+                I have read and agree to the{" "}
+                <Link href="/terms" className="text-green-400 hover:text-green-300 underline">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="text-green-400 hover:text-green-300 underline">
+                  Privacy Policy
+                </Link>
+              </label>
+            </div>
+          </div>
+
+          {/* Safety Guidelines */}
+          <div className="bg-yellow-900 border border-yellow-700 rounded-lg p-4">
+            <h3 className="text-yellow-200 font-semibold mb-2">🛡️ Safety Guidelines</h3>
+            <p className="text-yellow-200 text-sm mb-2">When meeting other users for throwing:</p>
+            <ul className="text-yellow-200 text-sm list-disc list-inside space-y-1">
+              <li>Meet in public parks during daylight hours</li>
+              <li>Tell someone where you're going</li>
+              <li>Trust your instincts - if something feels wrong, leave</li>
+              <li>Report any inappropriate behavior immediately</li>
+            </ul>
+            <p className="text-yellow-200 text-xs mt-2">
+              By creating an account, you acknowledge these safety guidelines and understand that you meet other users at your own risk.
+            </p>
+          </div>
 
           <div>
             <button
