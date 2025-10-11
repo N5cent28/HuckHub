@@ -325,6 +325,24 @@ export default function AdminCustomLocations() {
           <h1 className="text-white text-3xl font-bold">Custom Locations Admin</h1>
         </div>
 
+        {/* Admin Navigation */}
+        <div className="mb-8">
+          <div className="flex space-x-4">
+            <button
+              onClick={() => router.push("/admin/custom-locations")}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium"
+            >
+              Custom Locations
+            </button>
+            <button
+              onClick={() => router.push("/admin/user-management")}
+              className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              User Management
+            </button>
+          </div>
+        </div>
+
         <div className="space-y-4">
           {locations.map((location) => (
             <div
