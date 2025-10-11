@@ -92,7 +92,7 @@ export default function Home() {
                 height={32}
                 className="rounded-full mr-3"
               />
-              <span className="text-gray-300 text-sm">© 2024 HuckHub</span>
+              <span className="text-gray-300 text-sm">© 2025 HuckHub</span>
             </div>
             <div className="flex space-x-6">
               <Link href="/terms" className="text-gray-400 hover:text-gray-300 text-sm">
