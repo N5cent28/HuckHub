@@ -93,20 +93,25 @@ export default function AdminCustomLocations() {
 
   const loadUserManagementData = async () => {
     try {
-      // Load blocked users
+      // Load blocked users - simplified query without foreign key joins
       const { data: blocks, error: blocksError } = await supabase
         .from("user_blocks")
-        .select(`
-          id,
-          blocker_id,
-          blocked_id,
-          created_at,
-          blocker:profiles!user_blocks_blocker_id_fkey(full_name),
-          blocked:profiles!user_blocks_blocked_id_fkey(full_name)
-        `)
+        .select("id, blocker_id, blocked_id, created_at")
         .order("created_at", { ascending: false });
 
       if (blocksError) throw blocksError;
+
+      // Get profile names separately
+      const blockerIds = [...new Set(blocks?.map(b => b.blocker_id) || [])];
+      const blockedIds = [...new Set(blocks?.map(b => b.blocked_id) || [])];
+      const allUserIds = [...new Set([...blockerIds, ...blockedIds])];
+
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", allUserIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p.full_name]) || []);
 
       const formattedBlocks = blocks?.map(block => ({
         id: block.id,
@@ -114,30 +119,33 @@ export default function AdminCustomLocations() {
         blocked_id: block.blocked_id,
         reason: null, // Reason column doesn't exist in current schema
         created_at: block.created_at,
-        blocker_name: block.blocker?.full_name || "Unknown",
-        blocked_name: block.blocked?.full_name || "Unknown"
+        blocker_name: profileMap.get(block.blocker_id) || "Unknown",
+        blocked_name: profileMap.get(block.blocked_id) || "Unknown"
       })) || [];
 
       setBlockedUsers(formattedBlocks);
 
-      // Load reported users
+      // Load reported users - simplified query without foreign key joins
       const { data: reports, error: reportsError } = await supabase
         .from("user_reports")
-        .select(`
-          id,
-          reporter_id,
-          reported_id,
-          reason,
-          description,
-          created_at,
-          reporter:profiles!user_reports_reporter_id_fkey(full_name),
-          reported:profiles!user_reports_reported_id_fkey(full_name)
-        `)
+        .select("id, reporter_id, reported_id, reason, description, created_at")
         .order("created_at", { ascending: false });
 
       if (reportsError) throw reportsError;
 
       console.log("Raw reports data:", reports);
+
+      // Get profile names for reports
+      const reporterIds = [...new Set(reports?.map(r => r.reporter_id) || [])];
+      const reportedIds = [...new Set(reports?.map(r => r.reported_id) || [])];
+      const allReportUserIds = [...new Set([...reporterIds, ...reportedIds])];
+
+      const { data: reportProfiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", allReportUserIds);
+
+      const reportProfileMap = new Map(reportProfiles?.map(p => [p.id, p.full_name]) || []);
 
       const formattedReports = reports?.map(report => ({
         id: report.id,
@@ -146,8 +154,8 @@ export default function AdminCustomLocations() {
         reason: report.reason,
         description: report.description,
         created_at: report.created_at,
-        reporter_name: report.reporter?.full_name || "Unknown",
-        reported_name: report.reported?.full_name || "Unknown"
+        reporter_name: reportProfileMap.get(report.reporter_id) || "Unknown",
+        reported_name: reportProfileMap.get(report.reported_id) || "Unknown"
       })) || [];
 
       console.log("Formatted reports:", formattedReports);
