@@ -36,7 +36,6 @@ export async function POST(req: NextRequest) {
   const { error } = await sbAdmin.from("user_blocks").insert({
     blocker_id: user.id,
     blocked_id: targetId,
-    reason: reason || null,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

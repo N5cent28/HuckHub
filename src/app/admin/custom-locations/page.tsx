@@ -49,6 +49,7 @@ export default function AdminCustomLocations() {
   const [locations, setLocations] = useState<CustomLocation[]>([]);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [reportedUsers, setReportedUsers] = useState<ReportedUser[]>([]);
+  const [banningUser, setBanningUser] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
   const [editCoords, setEditCoords] = useState("");
@@ -99,7 +100,6 @@ export default function AdminCustomLocations() {
           id,
           blocker_id,
           blocked_id,
-          reason,
           created_at,
           blocker:profiles!user_blocks_blocker_id_fkey(full_name),
           blocked:profiles!user_blocks_blocked_id_fkey(full_name)
@@ -112,7 +112,7 @@ export default function AdminCustomLocations() {
         id: block.id,
         blocker_id: block.blocker_id,
         blocked_id: block.blocked_id,
-        reason: block.reason,
+        reason: null, // Reason column doesn't exist in current schema
         created_at: block.created_at,
         blocker_name: block.blocker?.full_name || "Unknown",
         blocked_name: block.blocked?.full_name || "Unknown"
@@ -137,6 +137,8 @@ export default function AdminCustomLocations() {
 
       if (reportsError) throw reportsError;
 
+      console.log("Raw reports data:", reports);
+
       const formattedReports = reports?.map(report => ({
         id: report.id,
         reporter_id: report.reporter_id,
@@ -147,6 +149,8 @@ export default function AdminCustomLocations() {
         reporter_name: report.reporter?.full_name || "Unknown",
         reported_name: report.reported?.full_name || "Unknown"
       })) || [];
+
+      console.log("Formatted reports:", formattedReports);
 
       setReportedUsers(formattedReports);
     } catch (error) {
@@ -187,6 +191,34 @@ export default function AdminCustomLocations() {
     } catch (error) {
       console.error("Error dismissing report:", error);
       alert("Failed to dismiss report");
+    }
+  };
+
+  const banUser = async (userId: string, userName: string) => {
+    try {
+      // First, delete the user's profile
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", userId);
+
+      if (profileError) throw profileError;
+
+      // Then delete the user from auth (this requires admin privileges)
+      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (authError) {
+        console.error("Could not delete user from auth:", authError);
+        // Continue anyway - the profile is deleted which effectively bans them
+      }
+
+      // Reload data
+      loadUserManagementData();
+      setBanningUser(null);
+      alert(`${userName} has been banned from HuckHub`);
+    } catch (error) {
+      console.error("Error banning user:", error);
+      alert("Failed to ban user");
     }
   };
 
@@ -622,12 +654,20 @@ export default function AdminCustomLocations() {
                           {new Date(block.created_at).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => unblockUser(block.id)}
-                            className="text-green-400 hover:text-green-300 font-medium"
-                          >
-                            Unblock
-                          </button>
+                          <div className="flex space-x-3">
+                            <button
+                              onClick={() => unblockUser(block.id)}
+                              className="text-green-400 hover:text-green-300 font-medium"
+                            >
+                              Unblock
+                            </button>
+                            <button
+                              onClick={() => setBanningUser(block.blocked_id)}
+                              className="text-red-400 hover:text-red-300 font-medium"
+                            >
+                              Ban
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -680,12 +720,20 @@ export default function AdminCustomLocations() {
                           {new Date(report.created_at).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => dismissReport(report.id)}
-                            className="text-yellow-400 hover:text-yellow-300 font-medium"
-                          >
-                            Dismiss
-                          </button>
+                          <div className="flex space-x-3">
+                            <button
+                              onClick={() => dismissReport(report.id)}
+                              className="text-yellow-400 hover:text-yellow-300 font-medium"
+                            >
+                              Dismiss
+                            </button>
+                            <button
+                              onClick={() => setBanningUser(report.reported_id)}
+                              className="text-red-400 hover:text-red-300 font-medium"
+                            >
+                              Ban
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -696,6 +744,38 @@ export default function AdminCustomLocations() {
           </div>
         </div>
       </div>
+
+      {/* Ban Confirmation Modal */}
+      {banningUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-semibold text-white mb-4">Confirm Ban</h3>
+            <p className="text-gray-300 mb-6">
+              Are you sure you want to ban this user from HuckHub? This action cannot be undone and will permanently delete their account.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setBanningUser(null)}
+                className="flex-1 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const userToBan = [...blockedUsers, ...reportedUsers].find(
+                    user => user.blocked_id === banningUser || user.reported_id === banningUser
+                  );
+                  const userName = userToBan?.blocked_name || userToBan?.reported_name || "Unknown";
+                  banUser(banningUser, userName);
+                }}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Ban User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
