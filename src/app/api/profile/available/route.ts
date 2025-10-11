@@ -15,6 +15,7 @@ function currentDay(): string {
 export async function GET(req: NextRequest) {
   console.log('[SERVER DEBUG] /api/profile/available called');
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  const sbAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   const slot = currentSlot();
   const day = currentDay();
   
@@ -43,11 +44,12 @@ export async function GET(req: NextRequest) {
   let blockedIds: Set<string> = new Set();
   if (currentUserId) {
     console.log('[DEBUG] Current user ID:', currentUserId);
-    const { data: blockedUsers } = await sb
+    const { data: blockedUsers, error: blockedError } = await sbAdmin
       .from("user_blocks")
       .select("blocked_id")
       .eq("blocker_id", currentUserId);
     
+    console.log('[DEBUG] Blocked users query error:', blockedError);
     console.log('[DEBUG] Blocked users:', blockedUsers);
     blockedIds = new Set(blockedUsers?.map(b => b.blocked_id) || []);
     console.log('[DEBUG] Blocked IDs:', Array.from(blockedIds));

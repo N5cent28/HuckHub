@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function GET(req: NextRequest) {
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  const sbAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   
   // Get current user to filter out blocked users
   const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   // Filter out blocked users if we have a current user
   if (currentUserId) {
-    const { data: blockedUsers } = await sb
+    const { data: blockedUsers } = await sbAdmin
       .from("user_blocks")
       .select("blocked_id")
       .eq("blocker_id", currentUserId);
