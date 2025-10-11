@@ -49,21 +49,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Cannot access contact info" }, { status: 403 });
     }
     
-    // Prepare contact info based on user's preferences
-    const contactInfo: any = {
-      name: targetProfile.full_name,
+    // Get the requesting user's profile for their contact info
+    const { data: requesterProfile } = await sb
+      .from("profiles")
+      .select("full_name, email, contact_preferences")
+      .eq("id", user.id)
+      .single();
+    
+    // Prepare contact info in the format expected by the frontend
+    const contactInfo = {
+      requester: {
+        name: requesterProfile?.full_name || "Unknown",
+        email: requesterProfile?.contact_preferences?.share_email ? requesterProfile?.email : null,
+      },
+      target: {
+        name: targetProfile.full_name,
+        email: targetProfile.contact_preferences?.share_email ? targetProfile.email : null,
+      }
     };
-    
-    // Add email if user has enabled sharing
-    if (targetProfile.contact_preferences?.share_email) {
-      contactInfo.email = targetProfile.email;
-    }
-    
-    // Add phone if user has enabled sharing (when implemented)
-    if (targetProfile.contact_preferences?.share_phone) {
-      // TODO: Add phone number when implemented
-      contactInfo.phone = "Phone sharing not yet implemented";
-    }
     
     return NextResponse.json(contactInfo);
     

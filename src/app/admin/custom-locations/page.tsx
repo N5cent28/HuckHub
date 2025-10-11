@@ -19,6 +19,27 @@ interface CustomLocation {
   };
 }
 
+interface BlockedUser {
+  id: string;
+  blocker_id: string;
+  blocked_id: string;
+  reason: string | null;
+  created_at: string;
+  blocker_name: string;
+  blocked_name: string;
+}
+
+interface ReportedUser {
+  id: string;
+  reporter_id: string;
+  reported_id: string;
+  reason: string;
+  description: string | null;
+  created_at: string;
+  reporter_name: string;
+  reported_name: string;
+}
+
 // Admin user configuration
 const ADMIN_USER_ID = "b9ad6050-f56c-42a9-bb6f-5ce24347c9a7";
 const ADMIN_EMAIL = "noahryannicol@gmail.com";
@@ -26,6 +47,8 @@ const ADMIN_EMAIL = "noahryannicol@gmail.com";
 export default function AdminCustomLocations() {
   const router = useRouter();
   const [locations, setLocations] = useState<CustomLocation[]>([]);
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
+  const [reportedUsers, setReportedUsers] = useState<ReportedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
   const [editCoords, setEditCoords] = useState("");
@@ -53,6 +76,7 @@ export default function AdminCustomLocations() {
       if (user.id === ADMIN_USER_ID) {
         setIsAdmin(true);
         loadLocations();
+        loadUserManagementData();
       } else {
         alert("Access denied. This page is restricted to administrators only.");
         router.push("/dashboard");
@@ -63,6 +87,106 @@ export default function AdminCustomLocations() {
       router.push("/auth/login");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUserManagementData = async () => {
+    try {
+      // Load blocked users
+      const { data: blocks, error: blocksError } = await supabase
+        .from("user_blocks")
+        .select(`
+          id,
+          blocker_id,
+          blocked_id,
+          reason,
+          created_at,
+          blocker:profiles!user_blocks_blocker_id_fkey(full_name),
+          blocked:profiles!user_blocks_blocked_id_fkey(full_name)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (blocksError) throw blocksError;
+
+      const formattedBlocks = blocks?.map(block => ({
+        id: block.id,
+        blocker_id: block.blocker_id,
+        blocked_id: block.blocked_id,
+        reason: block.reason,
+        created_at: block.created_at,
+        blocker_name: block.blocker?.full_name || "Unknown",
+        blocked_name: block.blocked?.full_name || "Unknown"
+      })) || [];
+
+      setBlockedUsers(formattedBlocks);
+
+      // Load reported users
+      const { data: reports, error: reportsError } = await supabase
+        .from("user_reports")
+        .select(`
+          id,
+          reporter_id,
+          reported_id,
+          reason,
+          description,
+          created_at,
+          reporter:profiles!user_reports_reporter_id_fkey(full_name),
+          reported:profiles!user_reports_reported_id_fkey(full_name)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (reportsError) throw reportsError;
+
+      const formattedReports = reports?.map(report => ({
+        id: report.id,
+        reporter_id: report.reporter_id,
+        reported_id: report.reported_id,
+        reason: report.reason,
+        description: report.description,
+        created_at: report.created_at,
+        reporter_name: report.reporter?.full_name || "Unknown",
+        reported_name: report.reported?.full_name || "Unknown"
+      })) || [];
+
+      setReportedUsers(formattedReports);
+    } catch (error) {
+      console.error("Error loading user management data:", error);
+    }
+  };
+
+  const unblockUser = async (blockId: string) => {
+    try {
+      const { error } = await supabase
+        .from("user_blocks")
+        .delete()
+        .eq("id", blockId);
+
+      if (error) throw error;
+
+      // Reload data
+      loadUserManagementData();
+      alert("User unblocked successfully");
+    } catch (error) {
+      console.error("Error unblocking user:", error);
+      alert("Failed to unblock user");
+    }
+  };
+
+  const dismissReport = async (reportId: string) => {
+    try {
+      const { error } = await supabase
+        .from("user_reports")
+        .delete()
+        .eq("id", reportId);
+
+      if (error) throw error;
+
+      // Reload data
+      loadUserManagementData();
+      alert("Report dismissed successfully");
+    } catch (error) {
+      console.error("Error dismissing report:", error);
+      alert("Failed to dismiss report");
     }
   };
 
@@ -325,23 +449,6 @@ export default function AdminCustomLocations() {
           <h1 className="text-white text-3xl font-bold">Custom Locations Admin</h1>
         </div>
 
-        {/* Admin Navigation */}
-        <div className="mb-8">
-          <div className="flex space-x-4">
-            <button
-              onClick={() => router.push("/admin/custom-locations")}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium"
-            >
-              Custom Locations
-            </button>
-            <button
-              onClick={() => router.push("/admin/user-management")}
-              className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              User Management
-            </button>
-          </div>
-        </div>
 
         <div className="space-y-4">
           {locations.map((location) => (
@@ -470,6 +577,123 @@ export default function AdminCustomLocations() {
               No custom locations submitted yet.
             </div>
           )}
+        </div>
+
+        {/* User Management Section */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-white mb-6">User Management</h2>
+          
+          {/* Blocked Users */}
+          <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden mb-8">
+            <div className="px-6 py-4 border-b border-gray-700">
+              <h3 className="text-xl font-semibold text-white">Blocked Users ({blockedUsers.length})</h3>
+              <p className="text-gray-400 text-sm">Users who have been blocked by other users</p>
+            </div>
+            
+            {blockedUsers.length === 0 ? (
+              <div className="p-6 text-center text-gray-400">
+                No blocked users found
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-900">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Blocked User</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Blocked By</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Reason</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {blockedUsers.map((block) => (
+                      <tr key={block.id} className="hover:bg-gray-750">
+                        <td className="px-6 py-4 whitespace-nowrap text-white font-medium">
+                          {block.blocked_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                          {block.blocker_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                          {block.reason || "No reason provided"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                          {new Date(block.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => unblockUser(block.id)}
+                            className="text-green-400 hover:text-green-300 font-medium"
+                          >
+                            Unblock
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Reports */}
+          <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-700">
+              <h3 className="text-xl font-semibold text-white">User Reports ({reportedUsers.length})</h3>
+              <p className="text-gray-400 text-sm">Reports submitted by users about other users</p>
+            </div>
+            
+            {reportedUsers.length === 0 ? (
+              <div className="p-6 text-center text-gray-400">
+                No reports found
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-900">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Reported User</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Reported By</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Reason</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Description</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {reportedUsers.map((report) => (
+                      <tr key={report.id} className="hover:bg-gray-750">
+                        <td className="px-6 py-4 whitespace-nowrap text-white font-medium">
+                          {report.reported_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                          {report.reporter_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                          {report.reason}
+                        </td>
+                        <td className="px-6 py-4 text-gray-300 max-w-xs truncate">
+                          {report.description || "No description provided"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                          {new Date(report.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => dismissReport(report.id)}
+                            className="text-yellow-400 hover:text-yellow-300 font-medium"
+                          >
+                            Dismiss
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
