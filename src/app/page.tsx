@@ -6,6 +6,17 @@ import { useState } from "react";
 
 export default function Home() {
   const [showDonationModal, setShowDonationModal] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
+
+  const handleCopyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText("noahryannicol@gmail.com");
+      setEmailCopied(true);
+      setTimeout(() => setEmailCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy email:", err);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
@@ -139,12 +150,20 @@ export default function Home() {
                 >
                   💙 Venmo (@Noah-Nicol)
                 </a>
-                <div className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                <button
+                  onClick={handleCopyEmail}
+                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors cursor-pointer relative"
+                >
                   <div className="text-center">
                     <div className="font-bold mb-1">💛 PayPal</div>
                     <div className="text-sm">noahryannicol@gmail.com</div>
+                    {emailCopied && (
+                      <div className="text-xs mt-2 text-yellow-100 transition-opacity duration-300">
+                        Email copied to clipboard
+                      </div>
+                    )}
                   </div>
-                </div>
+                </button>
               </div>
 
               <p className="text-sm text-gray-400 mt-4">
