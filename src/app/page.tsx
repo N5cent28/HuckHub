@@ -145,16 +145,6 @@ export default function Home() {
                     <div className="text-sm">noahryannicol@gmail.com</div>
                   </div>
                 </div>
-                <div className="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
-                  <div className="text-center">
-                    <div className="font-bold mb-1">💚 Wise (Bank Transfer)</div>
-                    <div className="text-sm">Noah Nicol</div>
-                    <div className="text-xs mt-1">
-                      Account: 369250495217110<br/>
-                      Routing: 084009519
-                    </div>
-                  </div>
-                </div>
               </div>
 
               <p className="text-sm text-gray-400 mt-4">
