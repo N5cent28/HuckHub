@@ -48,7 +48,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the app.
+Open [https://huckhub.netlify.app](https://huckhub.netlify.app/) to see the app.
 
 ### Production Deployment
 
