@@ -366,11 +366,11 @@ export default function ProfileSetup() {
                     </div>
                     <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
                       <p className="text-xs text-blue-100 mb-2 font-medium">Step 2</p>
-                      <img src="/Install_images/Safari_step2.jpeg" alt="Safari install step 2: tap Add to Home Screen" className="w-full rounded-md border border-blue-800" />
+                      <img src="/Install_images/Safari_step2.png" alt="Safari install step 2: tap Add to Home Screen" className="w-full rounded-md border border-blue-800" />
                     </div>
                     <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
                       <p className="text-xs text-blue-100 mb-2 font-medium">Step 3</p>
-                      <img src="/Install_images/Safari_step3.jpeg" alt="Safari install step 3: tap Add" className="w-full rounded-md border border-blue-800" />
+                      <img src="/Install_images/Safari_step3.png" alt="Safari install step 3: tap Add" className="w-full rounded-md border border-blue-800" />
                     </div>
                   </div>
                 </>
@@ -387,15 +387,15 @@ export default function ProfileSetup() {
                   <div className="grid gap-3 md:grid-cols-3">
                     <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
                       <p className="text-xs text-blue-100 mb-2 font-medium">Step 1</p>
-                      <img src="/Install_images/Chrome_step1.jpeg" alt="Chrome iOS install step 1" className="w-full rounded-md border border-blue-800" />
+                      <img src="/Install_images/Chrome_step1.png" alt="Chrome iOS install step 1" className="w-full rounded-md border border-blue-800" />
                     </div>
                     <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
                       <p className="text-xs text-blue-100 mb-2 font-medium">Step 2</p>
-                      <img src="/Install_images/Chrome_step2.jpeg" alt="Chrome iOS install step 2" className="w-full rounded-md border border-blue-800" />
+                      <img src="/Install_images/Chrome_step2.png" alt="Chrome iOS install step 2" className="w-full rounded-md border border-blue-800" />
                     </div>
                     <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
                       <p className="text-xs text-blue-100 mb-2 font-medium">Step 3</p>
-                      <img src="/Install_images/Chrome_step3.jpeg" alt="Chrome iOS install step 3" className="w-full rounded-md border border-blue-800" />
+                      <img src="/Install_images/Chrome_step3.png" alt="Chrome iOS install step 3" className="w-full rounded-md border border-blue-800" />
                     </div>
                   </div>
                 </>
