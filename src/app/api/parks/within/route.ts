@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   if (Number.isNaN(lat) || Number.isNaN(lon)) return NextResponse.json({ error: "lat/lon required" }, { status: 400 });
 
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-  const { data, error } = await sb.from("parks").select("name,address,coordinates");
+  const { data, error } = await sb.from("parks").select("id,name,address,coordinates");
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   const within = (data || []).map((p: any) => {
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     const parkLon = Number(match[1]);
     const parkLat = Number(match[2]);
     const dist = haversineMiles(lat, lon, parkLat, parkLon);
-    return { name: p.name, address: p.address, distance_mi: dist };
+    return { id: p.id, name: p.name, address: p.address, latitude: parkLat, longitude: parkLon, distance_mi: dist };
   }).filter(Boolean).filter((p: any) => p!.distance_mi <= radius)
     .sort((a: any, b: any) => a.distance_mi - b.distance_mi);
 

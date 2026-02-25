@@ -241,6 +241,18 @@ export default function ParkSearch() {
             <p>• You can always come back and modify your list later</p>
           </div>
         </div>
+
+        <div className="mt-6 bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <p className="text-sm text-gray-200">
+            Don&apos;t see the park you&apos;re looking for? Add it here for an admin to approve.
+          </p>
+          <a
+            href="/profile/custom-location"
+            className="inline-block mt-3 text-green-400 hover:text-green-300 text-sm font-medium"
+          >
+            Add a custom location
+          </a>
+        </div>
       </div>
     </div>
   );

@@ -29,6 +29,26 @@ const profileSchema = z.object({
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
+type InstallGuide = "ios_safari" | "ios_chrome" | "android_chrome" | "other";
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
+function detectInstallGuide(): InstallGuide {
+  if (typeof navigator === "undefined") return "other";
+  const ua = navigator.userAgent;
+
+  const isIOS = /iPad|iPhone|iPod/.test(ua);
+  const isAndroid = /Android/.test(ua);
+  const isChrome = /CriOS\//.test(ua) || /Chrome\//.test(ua);
+  const isSafari = /Safari\//.test(ua) && !isChrome;
+
+  if (isIOS && isSafari) return "ios_safari";
+  if (isIOS && isChrome) return "ios_chrome";
+  if (isAndroid && isChrome) return "android_chrome";
+  return "other";
+}
 
 export default function ProfileSetup() {
   const router = useRouter();
@@ -36,6 +56,10 @@ export default function ProfileSetup() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [message, setMessage] = useState<string>("");
+  const [installGuide, setInstallGuide] = useState<InstallGuide>("other");
+  const [isAndroid, setIsAndroid] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
   const {
     register,
@@ -87,6 +111,55 @@ export default function ProfileSetup() {
     };
     init();
   }, [router]);
+
+  useEffect(() => {
+    setInstallGuide(detectInstallGuide());
+  }, []);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || typeof window === "undefined") return;
+    const android = /Android/.test(navigator.userAgent);
+    setIsAndroid(android);
+    if (!android) return;
+
+    const standaloneByDisplayMode = window.matchMedia("(display-mode: standalone)").matches;
+    const standaloneByNavigator = (navigator as any).standalone === true;
+    setIsInstalled(standaloneByDisplayMode || standaloneByNavigator);
+
+    const displayModeQuery = window.matchMedia("(display-mode: standalone)");
+    const onDisplayModeChange = (event: MediaQueryListEvent) => {
+      setIsInstalled(event.matches);
+    };
+
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setDeferredInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    const onAppInstalled = () => {
+      setDeferredInstallPrompt(null);
+      setIsInstalled(true);
+    };
+
+    displayModeQuery.addEventListener("change", onDisplayModeChange);
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("appinstalled", onAppInstalled);
+    return () => {
+      displayModeQuery.removeEventListener("change", onDisplayModeChange);
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", onAppInstalled);
+    };
+  }, []);
+
+  const handleAndroidInstall = async () => {
+    if (!deferredInstallPrompt) {
+      alert('Install is not available yet. In Chrome, open the menu (⋮) and tap "Install app" or "Add to Home screen".');
+      return;
+    }
+    await deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    setDeferredInstallPrompt(null);
+  };
 
   const onSubmit = async (form: ProfileForm) => {
     if (!userId) return;
@@ -179,6 +252,22 @@ export default function ProfileSetup() {
       <div className="max-w-2xl mx-auto bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-xl">
         <h1 className="text-2xl font-bold text-white mb-2">Complete your profile</h1>
         <p className="text-gray-300 mb-6">This helps us match you with compatible partners.</p>
+        {isAndroid && !isInstalled && (
+          <div className="mb-6 rounded-lg border border-green-700 bg-green-900/20 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-green-100">
+                Install HuckHub for faster access and push notifications.
+              </p>
+              <button
+                type="button"
+                onClick={handleAndroidInstall}
+                className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 px-4 rounded-lg"
+              >
+                Install HuckHub
+              </button>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
@@ -253,9 +342,6 @@ export default function ProfileSetup() {
               value={(watch("general_availability") as any) || {}}
               onChange={(next) => setValue("general_availability", next as any)}
             />
-            <div className="mt-3 text-sm">
-              <a href="/profile/custom-location" className="text-green-400 hover:text-green-300">Add a custom location</a>
-            </div>
           </div>
 
 
@@ -264,20 +350,77 @@ export default function ProfileSetup() {
             <h3 className="text-blue-300 font-semibold mb-2 flex items-center">
               📱 Install HuckHub on Your Phone
             </h3>
-            <div className="text-sm text-blue-200 space-y-2">
-              <p><strong>iPhone (Safari):</strong></p>
-              <ol className="list-decimal list-inside ml-4 space-y-1">
-                <li>Tap the Share button at the bottom</li>
-                <li>Scroll down and tap "Add to Home Screen"</li>
-                <li>Tap "Add" to install</li>
-              </ol>
-              <p className="mt-3"><strong>Android (Chrome):</strong></p>
-              <ol className="list-decimal list-inside ml-4 space-y-1">
-                <li>Tap the menu (⋮) in the top right</li>
-                <li>Tap "Add to Home screen" or "Install app"</li>
-                <li>Tap "Add" or "Install" to confirm</li>
-              </ol>
-              <p className="mt-3 text-blue-100">
+            <div className="text-sm text-blue-200 space-y-3">
+              {installGuide === "ios_safari" && (
+                <>
+                  <p><strong>You're on iPhone Safari. Follow these steps:</strong></p>
+                  <ol className="list-decimal list-inside ml-4 space-y-1">
+                    <li>Tap the Share button at the bottom of Safari.</li>
+                    <li>Scroll down and tap "Add to Home Screen".</li>
+                    <li>Tap "Add" in the top-right to finish installation.</li>
+                  </ol>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
+                      <p className="text-xs text-blue-100 mb-2 font-medium">Step 1</p>
+                      <img src="/Install_images/Safari_step1.jpeg" alt="Safari install step 1: tap Share button" className="w-full rounded-md border border-blue-800" />
+                    </div>
+                    <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
+                      <p className="text-xs text-blue-100 mb-2 font-medium">Step 2</p>
+                      <img src="/Install_images/Safari_step2.jpeg" alt="Safari install step 2: tap Add to Home Screen" className="w-full rounded-md border border-blue-800" />
+                    </div>
+                    <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
+                      <p className="text-xs text-blue-100 mb-2 font-medium">Step 3</p>
+                      <img src="/Install_images/Safari_step3.jpeg" alt="Safari install step 3: tap Add" className="w-full rounded-md border border-blue-800" />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {installGuide === "ios_chrome" && (
+                <>
+                  <p><strong>You're on iPhone Chrome. Follow these steps:</strong></p>
+                  <ol className="list-decimal list-inside ml-4 space-y-1">
+                    <li>Tap the menu (⋯) in the top-right.</li>
+                    <li>Tap "Add to Home Screen".</li>
+                    <li>Tap "Add" to finish installation.</li>
+                  </ol>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
+                      <p className="text-xs text-blue-100 mb-2 font-medium">Step 1</p>
+                      <img src="/Install_images/Chrome_step1.jpeg" alt="Chrome iOS install step 1" className="w-full rounded-md border border-blue-800" />
+                    </div>
+                    <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
+                      <p className="text-xs text-blue-100 mb-2 font-medium">Step 2</p>
+                      <img src="/Install_images/Chrome_step2.jpeg" alt="Chrome iOS install step 2" className="w-full rounded-md border border-blue-800" />
+                    </div>
+                    <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
+                      <p className="text-xs text-blue-100 mb-2 font-medium">Step 3</p>
+                      <img src="/Install_images/Chrome_step3.jpeg" alt="Chrome iOS install step 3" className="w-full rounded-md border border-blue-800" />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {installGuide === "android_chrome" && (
+                <>
+                  <p><strong>You're on Android Chrome. Follow these steps:</strong></p>
+                  <ol className="list-decimal list-inside ml-4 space-y-1">
+                    <li>Tap the menu (⋮) in the top-right corner.</li>
+                    <li>Tap "Add to Home screen" or "Install app".</li>
+                    <li>Tap "Install" or "Add" to confirm.</li>
+                  </ol>
+                  <p className="text-xs text-blue-100">Android screenshots coming soon.</p>
+                </>
+              )}
+
+              {installGuide === "other" && (
+                <>
+                  <p><strong>For install instructions, open HuckHub on your phone:</strong></p>
+                  <p>Use Safari on iPhone or Chrome on iPhone/Android for step-by-step install guidance.</p>
+                </>
+              )}
+
+              <p className="mt-2 text-blue-100">
                 <strong>Pro tip:</strong> Installing the app gives you instant push notifications when someone wants to throw!
               </p>
             </div>

@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [seekingUntil, setSeekingUntil] = useState<string | null>(null);
   const [notificationChannel, setNotificationChannel] = useState<any>(null);
+  const [locationDeniedDialogResolver, setLocationDeniedDialogResolver] = useState<((choice: "cancel" | "add_parks" | "use_current_parks") => void) | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -85,6 +86,7 @@ export default function Dashboard() {
 
   const startSeekingInline = async () => {
     if (!user) return;
+    let preferredParksForSession: any[] = Array.isArray(profile?.preferred_parks) ? profile.preferred_parks : [];
     
     try {
       // Get user's current location (cached for 30 minutes to avoid repeated permission prompts)
@@ -114,19 +116,54 @@ export default function Dashboard() {
       } else {
         console.log("Location updated:", { latitude, longitude });
       }
+
+      // If the user has a radius preference, refresh preferred parks from current location.
+      if (profile?.radius_miles) {
+        try {
+          const response = await fetch(`/api/parks/within?lat=${latitude}&lon=${longitude}&radius=${profile.radius_miles}`);
+          const data = await response.json();
+
+          if (response.ok && Array.isArray(data.parks)) {
+            const refreshedPreferredParks = data.parks.map((park: any) => ({
+              id: park.id,
+              name: park.name,
+              description: park.address || null,
+              coordinates: [park.longitude, park.latitude],
+              is_custom: false
+            }));
+
+            const { error: preferredParksError } = await supabase
+              .from("profiles")
+              .update({ preferred_parks: refreshedPreferredParks })
+              .eq("id", user.id);
+
+            if (preferredParksError) {
+              console.error("Error updating preferred parks from radius:", preferredParksError);
+            } else {
+              preferredParksForSession = refreshedPreferredParks;
+              setProfile((prev: any) => ({ ...(prev || {}), preferred_parks: refreshedPreferredParks }));
+            }
+          }
+        } catch (parksRefreshError) {
+          console.error("Error refreshing preferred parks from radius:", parksRefreshError);
+        }
+      }
     } catch (locationError) {
       console.error("Error getting location:", locationError);
       
       // Show a helpful message if location is denied
       if (locationError.code === 1) { // PERMISSION_DENIED
-        const shouldSearchParks = confirm(
-          "Location access was denied. You can still seek throwing partners, but you won't get automatic park suggestions. Would you like to manually search and add parks to your preferred list?"
-        );
-        
-        if (shouldSearchParks) {
+        const deniedAction = await new Promise<"cancel" | "add_parks" | "use_current_parks">((resolve) => {
+          setLocationDeniedDialogResolver(() => resolve);
+        });
+
+        if (deniedAction === "add_parks") {
           router.push("/parks/search");
           return;
         }
+        if (deniedAction === "cancel") return;
+
+        preferredParksForSession = Array.isArray(profile?.preferred_parks) ? profile.preferred_parks : [];
       }
       // Continue with seeking even if location capture fails
     }
@@ -140,7 +177,7 @@ export default function Dashboard() {
       user_id: user.id,
       time_window_start: now.toISOString(),
       time_window_end: end.toISOString(),
-      preferred_parks: [],
+      preferred_parks: preferredParksForSession,
       skill_preference: {},
       expires_at: end.toISOString(),
     });
@@ -319,6 +356,45 @@ export default function Dashboard() {
         </div>
 
       </main>
+
+      {locationDeniedDialogResolver && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg rounded-lg border border-gray-600 bg-gray-800 p-6 shadow-xl">
+            <p className="text-gray-100 leading-relaxed">
+              Location access was denied. You can still seek throwing partners, but you won't get automatic park suggestions. Would you like to manually search and add parks or use your existing preferred list?
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                onClick={() => {
+                  locationDeniedDialogResolver("cancel");
+                  setLocationDeniedDialogResolver(null);
+                }}
+                className="rounded-lg border border-gray-500 px-4 py-2 text-sm font-semibold text-gray-200 hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  locationDeniedDialogResolver("use_current_parks");
+                  setLocationDeniedDialogResolver(null);
+                }}
+                className="rounded-lg border border-green-500 px-4 py-2 text-sm font-semibold text-green-400 hover:bg-green-500 hover:text-white"
+              >
+                Use current parks
+              </button>
+              <button
+                onClick={() => {
+                  locationDeniedDialogResolver("add_parks");
+                  setLocationDeniedDialogResolver(null);
+                }}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                Add parks
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
