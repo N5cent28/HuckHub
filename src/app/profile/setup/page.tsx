@@ -29,7 +29,7 @@ const profileSchema = z.object({
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
-type InstallGuide = "ios_safari" | "ios_chrome" | "android_chrome" | "other";
+type InstallGuide = "ios" | "android_chrome" | "other";
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
@@ -42,10 +42,8 @@ function detectInstallGuide(): InstallGuide {
   const isIOS = /iPad|iPhone|iPod/.test(ua);
   const isAndroid = /Android/.test(ua);
   const isChrome = /CriOS\//.test(ua) || /Chrome\//.test(ua);
-  const isSafari = /Safari\//.test(ua) && !isChrome;
 
-  if (isIOS && isSafari) return "ios_safari";
-  if (isIOS && isChrome) return "ios_chrome";
+  if (isIOS) return "ios";
   if (isAndroid && isChrome) return "android_chrome";
   return "other";
 }
@@ -351,53 +349,25 @@ export default function ProfileSetup() {
               📱 Install HuckHub on Your Phone
             </h3>
             <div className="text-sm text-blue-200 space-y-3">
-              {installGuide === "ios_safari" && (
+              {installGuide === "ios" && (
                 <>
-                  <p><strong>You're on iPhone Safari. Follow these steps:</strong></p>
-                  <ol className="list-decimal list-inside ml-4 space-y-1">
-                    <li>Tap the Share button at the bottom of Safari.</li>
-                    <li>Scroll down and tap "Add to Home Screen".</li>
-                    <li>Tap "Add" in the top-right to finish installation.</li>
-                  </ol>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
-                      <p className="text-xs text-blue-100 mb-2 font-medium">Step 1</p>
-                      <img src="/Install_images/Safari_step1.jpeg" alt="Safari install step 1: tap Share button" className="w-full rounded-md border border-blue-800" />
+                  <details className="bg-blue-950/30 border border-blue-800 rounded-md p-3">
+                    <summary className="cursor-pointer font-semibold text-blue-100">Install on my iPhone</summary>
+                    <div className="mt-3 space-y-4">
+                      <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
+                        <p className="text-sm text-blue-100 mb-2 font-medium">Step 1: Tap the menu (⋯) in the top-right.</p>
+                        <img src="/Install_images/Chrome_step1.png" alt="Chrome iOS install step 1" className="w-full rounded-md border border-blue-800" />
+                      </div>
+                      <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
+                        <p className="text-sm text-blue-100 mb-2 font-medium">Step 2: Tap "Add to Home Screen".</p>
+                        <img src="/Install_images/Chrome_step2.png" alt="Chrome iOS install step 2" className="w-full rounded-md border border-blue-800" />
+                      </div>
+                      <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
+                        <p className="text-sm text-blue-100 mb-2 font-medium">Step 3: Tap "Add" to finish installation.</p>
+                        <img src="/Install_images/Chrome_step3.png" alt="Chrome iOS install step 3" className="w-full rounded-md border border-blue-800" />
+                      </div>
                     </div>
-                    <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
-                      <p className="text-xs text-blue-100 mb-2 font-medium">Step 2</p>
-                      <img src="/Install_images/Safari_step2.png" alt="Safari install step 2: tap Add to Home Screen" className="w-full rounded-md border border-blue-800" />
-                    </div>
-                    <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
-                      <p className="text-xs text-blue-100 mb-2 font-medium">Step 3</p>
-                      <img src="/Install_images/Safari_step3.png" alt="Safari install step 3: tap Add" className="w-full rounded-md border border-blue-800" />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {installGuide === "ios_chrome" && (
-                <>
-                  <p><strong>You're on iPhone Chrome. Follow these steps:</strong></p>
-                  <ol className="list-decimal list-inside ml-4 space-y-1">
-                    <li>Tap the menu (⋯) in the top-right.</li>
-                    <li>Tap "Add to Home Screen".</li>
-                    <li>Tap "Add" to finish installation.</li>
-                  </ol>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
-                      <p className="text-xs text-blue-100 mb-2 font-medium">Step 1</p>
-                      <img src="/Install_images/Chrome_step1.png" alt="Chrome iOS install step 1" className="w-full rounded-md border border-blue-800" />
-                    </div>
-                    <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
-                      <p className="text-xs text-blue-100 mb-2 font-medium">Step 2</p>
-                      <img src="/Install_images/Chrome_step2.png" alt="Chrome iOS install step 2" className="w-full rounded-md border border-blue-800" />
-                    </div>
-                    <div className="bg-blue-950/40 border border-blue-800 rounded-md p-2">
-                      <p className="text-xs text-blue-100 mb-2 font-medium">Step 3</p>
-                      <img src="/Install_images/Chrome_step3.png" alt="Chrome iOS install step 3" className="w-full rounded-md border border-blue-800" />
-                    </div>
-                  </div>
+                  </details>
                 </>
               )}
 
