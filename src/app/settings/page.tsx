@@ -10,6 +10,7 @@ type NotificationPreferences = {
   push_notifications: boolean;
   share_email: boolean;
   share_phone: boolean;
+  location_requests_enabled: boolean;
 };
 
 export default function Settings() {
@@ -21,6 +22,7 @@ export default function Settings() {
     push_notifications: false,
     share_email: true,
     share_phone: false,
+    location_requests_enabled: true,
   });
   const [notificationSupported, setNotificationSupported] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | null>(null);
@@ -52,6 +54,7 @@ export default function Settings() {
               push_notifications: data.profile.notification_preferences?.push_notifications ?? false,
               share_email: data.profile.contact_preferences?.share_email ?? true,
               share_phone: data.profile.contact_preferences?.share_phone ?? false,
+              location_requests_enabled: data.profile.notification_preferences?.location_requests_enabled ?? true,
             });
           }
         }
@@ -101,6 +104,7 @@ export default function Settings() {
           notification_preferences: {
             email_notifications: preferences.email_notifications,
             push_notifications: preferences.push_notifications,
+            location_requests_enabled: preferences.location_requests_enabled,
           },
           contact_preferences: {
             share_email: preferences.share_email,
@@ -245,6 +249,31 @@ export default function Settings() {
                   onChange={(e) => setPreferences(prev => ({ ...prev, share_phone: e.target.checked }))}
                   disabled
                   className="w-5 h-5 text-green-600 bg-gray-700 border-gray-600 rounded focus:ring-green-500 opacity-50"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Throw Now Preferences */}
+          <div>
+            <h2 className="text-lg font-semibold text-white mb-4">Throw Now</h2>
+            <p className="text-gray-300 text-sm mb-6">
+              Control whether HuckHub requests your location when you tap "Throw now."
+            </p>
+
+            <div className="space-y-4">
+              <label className="flex items-center justify-between p-4 bg-gray-900 rounded-lg border border-gray-700">
+                <div>
+                  <div className="text-white font-medium">Request Location on Throw Now</div>
+                  <div className="text-gray-400 text-sm">
+                    On: request location each tap. Off: start throw-now without requesting location.
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={preferences.location_requests_enabled}
+                  onChange={(e) => setPreferences(prev => ({ ...prev, location_requests_enabled: e.target.checked }))}
+                  className="w-5 h-5 text-green-600 bg-gray-700 border-gray-600 rounded focus:ring-green-500"
                 />
               </label>
             </div>

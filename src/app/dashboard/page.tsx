@@ -87,85 +87,100 @@ export default function Dashboard() {
   const startSeekingInline = async () => {
     if (!user) return;
     let preferredParksForSession: any[] = Array.isArray(profile?.preferred_parks) ? profile.preferred_parks : [];
+    const shouldRequestLocation = profile?.notification_preferences?.location_requests_enabled ?? true;
     
-    try {
-      // Get user's current location (cached for 30 minutes to avoid repeated permission prompts)
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: false, // 1km accuracy is fine for park matching
-          timeout: 5000, // 5 second timeout
-          maximumAge: 1800000 // 30 minutes - use cached location if available to avoid repeated permission prompts
+    if (shouldRequestLocation) {
+      try {
+        // Request fresh location each time Throw now is tapped.
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false, // 1km accuracy is fine for park matching
+            timeout: 5000, // 5 second timeout
+            maximumAge: 0 // force fresh location request on each tap
+          });
         });
+
+        const { latitude, longitude } = position.coords;
+        
+        // Update user's last location in their profile
+        const { error: locationError } = await supabase
+          .from("profiles")
+          .update({
+            last_location: `(${longitude}, ${latitude})`,
+            last_location_updated_at: new Date().toISOString()
+          })
+          .eq("id", user.id);
+
+        if (locationError) {
+          console.error("Error updating location:", locationError);
+          console.error("Location error details:", JSON.stringify(locationError, null, 2));
+          // Continue with seeking even if location update fails
+        } else {
+          console.log("Location updated:", { latitude, longitude });
+        }
+
+        // If the user has a radius preference, refresh preferred parks from current location.
+        if (profile?.radius_miles) {
+          try {
+            const response = await fetch(`/api/parks/within?lat=${latitude}&lon=${longitude}&radius=${profile.radius_miles}`);
+            const data = await response.json();
+
+            if (response.ok && Array.isArray(data.parks)) {
+              const refreshedPreferredParks = data.parks.map((park: any) => ({
+                id: park.id,
+                name: park.name,
+                description: park.address || null,
+                coordinates: [park.longitude, park.latitude],
+                is_custom: false
+              }));
+
+              const { error: preferredParksError } = await supabase
+                .from("profiles")
+                .update({ preferred_parks: refreshedPreferredParks })
+                .eq("id", user.id);
+
+              if (preferredParksError) {
+                console.error("Error updating preferred parks from radius:", preferredParksError);
+              } else {
+                preferredParksForSession = refreshedPreferredParks;
+                setProfile((prev: any) => ({ ...(prev || {}), preferred_parks: refreshedPreferredParks }));
+              }
+            }
+          } catch (parksRefreshError) {
+            console.error("Error refreshing preferred parks from radius:", parksRefreshError);
+          }
+        }
+      } catch (locationError) {
+        console.error("Error getting location:", locationError);
+        
+        // Show a helpful message if location is denied
+        if (locationError.code === 1) { // PERMISSION_DENIED
+          const deniedAction = await new Promise<"cancel" | "add_parks" | "use_current_parks">((resolve) => {
+            setLocationDeniedDialogResolver(() => resolve);
+          });
+
+          if (deniedAction === "add_parks") {
+            router.push("/parks/search");
+            return;
+          }
+          if (deniedAction === "cancel") return;
+
+          preferredParksForSession = Array.isArray(profile?.preferred_parks) ? profile.preferred_parks : [];
+        }
+        // Continue with seeking even if location capture fails
+      }
+    } else {
+      const deniedAction = await new Promise<"cancel" | "add_parks" | "use_current_parks">((resolve) => {
+        setLocationDeniedDialogResolver(() => resolve);
       });
 
-      const { latitude, longitude } = position.coords;
-      
-      // Update user's last location in their profile
-      const { error: locationError } = await supabase
-        .from("profiles")
-        .update({
-          last_location: `(${longitude}, ${latitude})`,
-          last_location_updated_at: new Date().toISOString()
-        })
-        .eq("id", user.id);
-
-      if (locationError) {
-        console.error("Error updating location:", locationError);
-        console.error("Location error details:", JSON.stringify(locationError, null, 2));
-        // Continue with seeking even if location update fails
-      } else {
-        console.log("Location updated:", { latitude, longitude });
+      if (deniedAction === "add_parks") {
+        router.push("/parks/search");
+        return;
       }
+      if (deniedAction === "cancel") return;
 
-      // If the user has a radius preference, refresh preferred parks from current location.
-      if (profile?.radius_miles) {
-        try {
-          const response = await fetch(`/api/parks/within?lat=${latitude}&lon=${longitude}&radius=${profile.radius_miles}`);
-          const data = await response.json();
-
-          if (response.ok && Array.isArray(data.parks)) {
-            const refreshedPreferredParks = data.parks.map((park: any) => ({
-              id: park.id,
-              name: park.name,
-              description: park.address || null,
-              coordinates: [park.longitude, park.latitude],
-              is_custom: false
-            }));
-
-            const { error: preferredParksError } = await supabase
-              .from("profiles")
-              .update({ preferred_parks: refreshedPreferredParks })
-              .eq("id", user.id);
-
-            if (preferredParksError) {
-              console.error("Error updating preferred parks from radius:", preferredParksError);
-            } else {
-              preferredParksForSession = refreshedPreferredParks;
-              setProfile((prev: any) => ({ ...(prev || {}), preferred_parks: refreshedPreferredParks }));
-            }
-          }
-        } catch (parksRefreshError) {
-          console.error("Error refreshing preferred parks from radius:", parksRefreshError);
-        }
-      }
-    } catch (locationError) {
-      console.error("Error getting location:", locationError);
-      
-      // Show a helpful message if location is denied
-      if (locationError.code === 1) { // PERMISSION_DENIED
-        const deniedAction = await new Promise<"cancel" | "add_parks" | "use_current_parks">((resolve) => {
-          setLocationDeniedDialogResolver(() => resolve);
-        });
-
-        if (deniedAction === "add_parks") {
-          router.push("/parks/search");
-          return;
-        }
-        if (deniedAction === "cancel") return;
-
-        preferredParksForSession = Array.isArray(profile?.preferred_parks) ? profile.preferred_parks : [];
-      }
-      // Continue with seeking even if location capture fails
+      preferredParksForSession = Array.isArray(profile?.preferred_parks) ? profile.preferred_parks : [];
     }
 
     const now = new Date();
