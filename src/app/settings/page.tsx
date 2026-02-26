@@ -254,9 +254,9 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Throw Now Preferences */}
+          {/* Location Permissions */}
           <div>
-            <h2 className="text-lg font-semibold text-white mb-4">Throw Now</h2>
+            <h2 className="text-lg font-semibold text-white mb-4">Location Permissions</h2>
             <p className="text-gray-300 text-sm mb-6">
               Control whether HuckHub requests your location when you tap "Throw now."
             </p>
@@ -264,9 +264,9 @@ export default function Settings() {
             <div className="space-y-4">
               <label className="flex items-center justify-between p-4 bg-gray-900 rounded-lg border border-gray-700">
                 <div>
-                  <div className="text-white font-medium">Request Location on Throw Now</div>
+                  <div className="text-white font-medium">Share Location on Throw Now</div>
                   <div className="text-gray-400 text-sm">
-                    On: request location each tap. Off: start throw-now without requesting location.
+                    Checked: HuckHub asks for and uses your location each time you tap "Throw now". Unchecked: HuckHub does not request your location.
                   </div>
                 </div>
                 <input
