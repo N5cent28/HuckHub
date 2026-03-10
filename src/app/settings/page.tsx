@@ -114,7 +114,8 @@ export default function Settings() {
       });
 
       if (res.ok) {
-        alert("Preferences saved successfully!");
+        router.push("/dashboard");
+        return;
       } else {
         const error = await res.json();
         alert(error.error || "Failed to save preferences");

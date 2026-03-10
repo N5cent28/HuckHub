@@ -26,6 +26,7 @@ const profileSchema = z.object({
   league_level: z.enum(["none", "mufa", "college", "college/club", "ufa"]),
   radius_miles: optionalNumber(1, 25),
   general_availability: z.record(z.string(), z.array(z.string())).optional(),
+  career_description: z.string().max(100).optional().or(z.literal("")),
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
@@ -73,6 +74,7 @@ export default function ProfileSetup() {
       skill_level: 5,
       league_level: "none",
       radius_miles: undefined,
+      career_description: "",
     },
   });
 
@@ -89,7 +91,7 @@ export default function ProfileSetup() {
       // Prefill form from existing profile
       const { data: existing } = await supabase
         .from("profiles")
-        .select("full_name, pronouns, skill_level, league_level, radius_miles, general_availability")
+        .select("full_name, pronouns, skill_level, league_level, radius_miles, general_availability, career_description")
         .eq("id", user.id)
         .maybeSingle();
       if (existing) {
@@ -103,6 +105,9 @@ export default function ProfileSetup() {
         }
         if (existing.general_availability) {
           setValue("general_availability", existing.general_availability as any);
+        }
+        if (existing.career_description) {
+          setValue("career_description", existing.career_description);
         }
       }
       setLoading(false);
@@ -227,7 +232,8 @@ export default function ProfileSetup() {
         league_level: form.league_level,
         radius_miles: form.radius_miles ?? null,
         general_availability: form.general_availability || {},
-        preferred_parks: preferredParks, // Always set preferred_parks (empty array if no parks found)
+        preferred_parks: preferredParks,
+        career_description: form.career_description || null,
       }, { onConflict: "id" });
 
     if (error) {
@@ -342,6 +348,19 @@ export default function ProfileSetup() {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-200 mb-1">Career (optional)</label>
+            <input
+              className="w-full bg-gray-900 border border-gray-600 text-white rounded-md p-2"
+              maxLength={100}
+              placeholder="e.g. Software engineer, teacher, student..."
+              {...register("career_description")}
+            />
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-gray-500 text-xs italic">(HuckHub Careers coming soon!)</p>
+              <p className="text-gray-400 text-xs">{(watch("career_description") || "").length}/100</p>
+            </div>
+          </div>
 
           {/* PWA Installation Instructions */}
           <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4 mb-6">
