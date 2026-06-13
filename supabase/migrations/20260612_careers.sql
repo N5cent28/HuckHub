@@ -7,7 +7,7 @@ create table if not exists career_profile_overrides (
   player_uid text unique,
   full_name text not null,
   career_field text,
-  current_role text,
+  "current_role" text,
   education text,
   career_summary text,
   linkedin_url text,
