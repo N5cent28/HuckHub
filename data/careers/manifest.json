@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-06-12T20:43:13.325705+00:00",
+  "schema_version": "1",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "embedding_dim": 384,
+  "n_profiles": 941,
+  "n_embeddings": 941,
+  "checksums": {
+    "profiles.parquet": "50260ea39eaa7ad312ae06e35af9922c686e328a4cd57a1aabf9473c6d6c43ff",
+    "embeddings.npy": "8cbd9664bdcabc709287e5c6ed001f6f63f875c0c5e304278a4f72c4b35d2d1b",
+    "embedding_ids.txt": "07f1225289c914b91825d1b4d34b0c4be6b7f449ba56d28b939a4acc000d1a78"
+  },
+  "notes": "Embeddings encode career_field, current_role, education, and career_summary only. Use known_locations for city/state filtering in the UI."
+}

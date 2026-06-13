@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   images: {
     domains: ['ybxytftngwibgbkvnect.supabase.co'],
   },
+  serverExternalPackages: ["@xenova/transformers", "onnxruntime-node"],
   // Ensure proper handling of environment variables
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,

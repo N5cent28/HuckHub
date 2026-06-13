@@ -68,7 +68,7 @@ export default function Home() {
           </div>
           
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
             <Link
               href="/auth/signup"
               className="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg"
@@ -80,6 +80,12 @@ export default function Home() {
               className="border-2 border-green-500 text-green-500 hover:bg-green-500 hover:text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg"
             >
               Login
+            </Link>
+            <Link
+              href="/careers"
+              className="border-2 border-sky-400 text-sky-300 hover:bg-sky-500 hover:text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg"
+            >
+              HuckHub Careers
             </Link>
             <button
               onClick={() => setShowDonationModal(true)}

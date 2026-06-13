@@ -242,6 +242,12 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold text-white">HuckHub</h1>
             </div>
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => router.push("/careers")}
+                className="px-3 py-1.5 text-sky-300 hover:text-sky-200 text-sm font-medium border border-sky-700 rounded-lg transition-colors hidden sm:inline"
+              >
+                Careers
+              </button>
               {/* Admin Button - Only show for admin user */}
               {user?.id === ADMIN_USER_ID && (
                 <button

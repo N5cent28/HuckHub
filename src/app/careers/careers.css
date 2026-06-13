@@ -1,0 +1,15 @@
+.careers-root {
+  --careers-primary: #0284c7;
+  --careers-primary-hover: #0369a1;
+  --careers-surface: #ffffff;
+  --careers-muted: #64748b;
+}
+
+.careers-root input[type="range"] {
+  accent-color: var(--careers-primary);
+}
+
+.careers-root .provenance-banner {
+  background: linear-gradient(90deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bae6fd;
+}

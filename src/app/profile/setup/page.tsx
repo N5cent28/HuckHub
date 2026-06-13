@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -357,7 +358,9 @@ export default function ProfileSetup() {
               {...register("career_description")}
             />
             <div className="flex items-center justify-between mt-1">
-              <p className="text-gray-500 text-xs italic">(HuckHub Careers coming soon!)</p>
+              <p className="text-gray-500 text-xs italic">
+                <Link href="/careers/me/edit" className="text-sky-400 hover:underline">Edit your HuckHub Careers profile →</Link>
+              </p>
               <p className="text-gray-400 text-xs">{(watch("career_description") || "").length}/100</p>
             </div>
           </div>
