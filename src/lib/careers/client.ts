@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  clearLocalAuthSession,
+  getSafeSession,
+  isSupabaseAuthConfigured,
+} from "@/lib/auth-session";
+import { isAdmin } from "@/lib/admin";
 import { supabase } from "@/lib/supabase";
 
 export function useCareersAuth() {
@@ -10,21 +16,30 @@ export function useCareersAuth() {
 
   useEffect(() => {
     const sync = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      if (!isSupabaseAuthConfigured()) {
+        setToken(null);
+        setUserId(null);
+        setLoading(false);
+        return;
+      }
+
+      const { session } = await getSafeSession();
       setToken(session?.access_token ?? null);
       setUserId(session?.user?.id ?? null);
       setLoading(false);
     };
     sync();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setToken(session?.access_token ?? null);
       setUserId(session?.user?.id ?? null);
     });
     return () => subscription.unsubscribe();
   }, []);
 
-  return { token, userId, authenticated: Boolean(token), loading };
+  return { token, userId, authenticated: Boolean(token), isAdmin: isAdmin(userId), loading };
 }
 
 export async function careersFetch(
@@ -38,8 +53,32 @@ export async function careersFetch(
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(path, { ...init, headers });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Request failed");
+  let res: Response;
+  try {
+    res = await fetch(path, { ...init, headers });
+  } catch {
+    throw new Error("Network error — check your connection and try again.");
+  }
+
+  let data: Record<string, unknown> = {};
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error("Unexpected server response");
+  }
+
+  if (res.status === 401 && isSupabaseAuthConfigured()) {
+    await clearLocalAuthSession();
+  }
+
+  if (!res.ok) {
+    const err = new Error((data.error as string) || "Request failed") as Error & {
+      code?: string;
+      can_dispute?: boolean;
+    };
+    err.code = data.code as string | undefined;
+    err.can_dispute = data.can_dispute as boolean | undefined;
+    throw err;
+  }
   return data;
 }

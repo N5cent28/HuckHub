@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getSafeSession } from "@/lib/auth-session";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -10,10 +11,30 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [message, setMessage] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next") || "/dashboard";
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { session } = await getSafeSession();
+      if (!cancelled && session) {
+        router.replace(nextPath.startsWith("/") ? nextPath : "/dashboard");
+        return;
+      }
+      if (!cancelled) setCheckingSession(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router, nextPath]);
+
+  if (checkingSession) {
+    return <div className="text-center text-gray-400 mt-8">Loading…</div>;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

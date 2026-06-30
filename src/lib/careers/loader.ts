@@ -2,6 +2,9 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { loadNpyMatrix, rowFromMatrix } from "./npy";
+import { normalizeLinkedInUrls } from "./linkedin";
+import { distinctLocationsFromProfiles, normalizeLocationList } from "./locations";
+import { buildProfileTeamHistory, distinctDivisionLabelsFromTeams } from "./teams";
 import type {
   CareersManifest,
   MergedCareerProfile,
@@ -16,6 +19,8 @@ interface CareersDataset {
   manifest: CareersManifest;
   profiles: Map<string, ScrapedCareerProfile>;
   teams: Map<string, TeamEntry[]>;
+  teamsPlayed: Map<string, TeamEntry[]>;
+  teamsCoached: Map<string, TeamEntry[]>;
   embeddingIds: string[];
   embeddingMatrix: Float32Array;
   uidToIndex: Map<string, number>;
@@ -65,6 +70,15 @@ export function loadCareersDataset(): CareersDataset {
   ) as Record<string, TeamEntry[]>;
   const teams = new Map(Object.entries(teamsRaw));
 
+  const teamsPlayed = new Map<string, TeamEntry[]>();
+  const teamsCoached = new Map<string, TeamEntry[]>();
+  for (const p of rawProfiles) {
+    const legacy = teams.get(p.player_uid) || [];
+    const { teams_played, teams_coached } = buildProfileTeamHistory(p, legacy);
+    teamsPlayed.set(p.player_uid, teams_played);
+    teamsCoached.set(p.player_uid, teams_coached);
+  }
+
   const embeddingIds = fs
     .readFileSync(path.join(CAREERS_DIR, "embedding_ids.txt"), "utf8")
     .split("\n")
@@ -75,21 +89,22 @@ export function loadCareersDataset(): CareersDataset {
   const uidToIndex = new Map<string, number>();
   embeddingIds.forEach((uid, i) => uidToIndex.set(uid, i));
 
-  const locationSet = new Set<string>();
-  for (const p of rawProfiles) {
-    for (const loc of p.known_locations || []) {
-      if (loc) locationSet.add(loc);
-    }
-  }
+  const profilesWithTeams = rawProfiles.map((p) => ({
+    known_locations: normalizeLocationList(p.known_locations || []),
+    teams_played: teamsPlayed.get(p.player_uid) || [],
+    teams_coached: teamsCoached.get(p.player_uid) || [],
+  }));
 
   cached = {
     manifest,
     profiles,
     teams,
+    teamsPlayed,
+    teamsCoached,
     embeddingIds,
     embeddingMatrix,
     uidToIndex,
-    locations: [...locationSet].sort((a, b) => a.localeCompare(b)),
+    locations: distinctLocationsFromProfiles(profilesWithTeams),
   };
   return cached;
 }
@@ -98,6 +113,9 @@ export function scrapedToMerged(profile: ScrapedCareerProfile, dataset: CareersD
   const idx = dataset.uidToIndex.get(profile.player_uid);
   const embedding =
     idx != null ? rowFromMatrix(dataset.embeddingMatrix, idx, EMBEDDING_DIM) : null;
+
+  const teams_played = dataset.teamsPlayed.get(profile.player_uid) || [];
+  const teams_coached = dataset.teamsCoached.get(profile.player_uid) || [];
 
   return {
     player_uid: profile.player_uid,
@@ -110,13 +128,21 @@ export function scrapedToMerged(profile: ScrapedCareerProfile, dataset: CareersD
     confidence_score: profile.confidence_score,
     linkedin_verified: profile.linkedin_verified,
     linkedin_url: profile.linkedin_url,
+    linkedin_urls: normalizeLinkedInUrls(profile),
     llm_rationale: profile.llm_rationale,
-    known_locations: profile.known_locations || [],
-    teams: dataset.teams.get(profile.player_uid) || [],
+    known_locations: normalizeLocationList(profile.known_locations || []),
+    teams_played,
+    teams_coached,
     provenance: "inferred",
     is_user_edited: false,
+    is_admin_edited: false,
     open_to_career_chats: false,
     email: null,
+    age_point_estimate_2026: profile.age_point_estimate_2026 ?? null,
+    age_min_2026: profile.age_min_2026 ?? null,
+    age_max_2026: profile.age_max_2026 ?? null,
+    age_source: profile.age_source ?? null,
+    age_confidence: profile.age_confidence ?? null,
     embed_source_text: profile.embed_source_text,
     embedding,
     embedding_index: idx ?? null,
@@ -148,6 +174,11 @@ export function getCareersMeta() {
 
 export function getDistinctLocations(): string[] {
   return loadCareersDataset().locations;
+}
+
+export function getDistinctDivisions(): string[] {
+  const dataset = loadCareersDataset();
+  return distinctDivisionLabelsFromTeams(dataset.teamsPlayed.values());
 }
 
 export { EMBEDDING_DIM, CAREERS_DIR };

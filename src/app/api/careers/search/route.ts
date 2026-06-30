@@ -10,16 +10,25 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const user = await getAuthUser(req);
 
-    const { results, total } = await searchCareers({
+    const { results, total, offset, limit, has_more } = await searchCareers({
       query: body.query,
       location: body.location,
       min_confidence: body.min_confidence,
       linkedin_verified: body.linkedin_verified,
-      top_k: body.top_k ?? 25,
+      division: body.division,
+      offset: body.offset,
+      limit: body.limit ?? body.top_k,
       authenticated: Boolean(user),
     });
 
-    return NextResponse.json({ results, total, authenticated: Boolean(user) });
+    return NextResponse.json({
+      results,
+      total,
+      offset,
+      limit,
+      has_more,
+      authenticated: Boolean(user),
+    });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });

@@ -17,9 +17,21 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('Supabase URL:', isValidHttp ? rawUrl : '(fixed to default)')
   // eslint-disable-next-line no-console
   console.log('Anon Key present:', Boolean(supabaseAnonKey))
+  if (!supabaseAnonKey) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      'Missing NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local — auth will fail with "Failed to fetch".'
+    )
+  }
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+})
 
 // For server-side operations
 export const createServerClient = () => {

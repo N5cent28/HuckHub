@@ -10,10 +10,14 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { reported_player_uid, reported_override_id, message } = body;
+  const { reported_player_uid, reported_override_id, message, evidence_notes } = body;
 
   if (!reported_player_uid && !reported_override_id) {
     return NextResponse.json({ error: "Report target is required" }, { status: 400 });
+  }
+
+  if (!message?.trim()) {
+    return NextResponse.json({ error: "Please describe why this profile belongs to you" }, { status: 400 });
   }
 
   const sb = createServerClient();
@@ -23,7 +27,9 @@ export async function POST(req: NextRequest) {
       reporter_user_id: user.id,
       reported_player_uid: reported_player_uid ?? null,
       reported_override_id: reported_override_id ?? null,
-      message: message ?? null,
+      message: message.trim(),
+      evidence_notes: evidence_notes?.trim() || null,
+      dispute_reason: "claim_conflict",
     })
     .select()
     .single();
@@ -37,7 +43,8 @@ export async function POST(req: NextRequest) {
       reporterUserId: user.id,
       reporterEmail: user.email ?? "unknown",
       reportedPlayerUid: reported_player_uid,
-      message: message ?? "",
+      message: message.trim(),
+      evidenceNotes: evidence_notes?.trim(),
     });
   } catch (err) {
     console.error("Impersonation email failed:", err);

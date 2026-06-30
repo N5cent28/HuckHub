@@ -13,3 +13,13 @@
   background: linear-gradient(90deg, #f0f9ff 0%, #e0f2fe 100%);
   border: 1px solid #bae6fd;
 }
+
+.careers-blur-name {
+  filter: blur(5px);
+  opacity: 0.82;
+}
+
+.careers-blur-light {
+  filter: blur(4px);
+  opacity: 0.78;
+}

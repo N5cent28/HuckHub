@@ -53,7 +53,14 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (existingClaim) {
-    return NextResponse.json({ error: "This profile has already been claimed" }, { status: 409 });
+    return NextResponse.json(
+      {
+        error: "This profile has already been claimed by another member",
+        code: "already_claimed",
+        can_dispute: true,
+      },
+      { status: 409 }
+    );
   }
 
   const { data: existingUser } = await sb

@@ -243,6 +243,12 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <button
+                onClick={() => router.push("/")}
+                className="px-3 py-1.5 text-gray-400 hover:text-gray-200 text-sm font-medium hidden sm:inline"
+              >
+                HuckHub
+              </button>
+              <button
                 onClick={() => router.push("/careers")}
                 className="px-3 py-1.5 text-sky-300 hover:text-sky-200 text-sm font-medium border border-sky-700 rounded-lg transition-colors hidden sm:inline"
               >

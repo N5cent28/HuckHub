@@ -1,28 +1,28 @@
-import type { CareerProfileOverride, CareerSearchResult, MergedCareerProfile } from "./types";
-import { confidenceLabel, normalizeDisplayName } from "./names";
+import type { CareerSearchResult, MergedCareerProfile } from "./types";
+import { confidenceLabel, normalizeDisplayName, summaryNamePrefix } from "./names";
+import { isEligibleForCareersSearch } from "./age";
+import { locationMatchesProfile } from "./locations";
+import { profileMatchesDivision } from "./teams";
 import { embedText } from "./embed";
 import { getAllScrapedMerged } from "./loader";
-import { mergeProfiles, overrideToMerged } from "./merge";
-import { createServerClient } from "@/lib/supabase";
+import { mergeProfiles, overrideToMerged, adminEditToMerged } from "./merge";
+import { loadOverrides, loadAdminEdits } from "./db";
 
 export interface SearchParams {
   query?: string;
   location?: string;
   min_confidence?: number;
   linkedin_verified?: boolean;
+  division?: string;
   top_k?: number;
+  offset?: number;
+  limit?: number;
   authenticated?: boolean;
 }
 
-async function loadOverrides(): Promise<CareerProfileOverride[]> {
-  const sb = createServerClient();
-  const { data, error } = await sb.from("career_profile_overrides").select("*");
-  if (error) {
-    // Table may not exist yet during local dev
-    console.warn("career_profile_overrides load failed:", error.message);
-    return [];
-  }
-  return (data || []) as CareerProfileOverride[];
+async function loadAllOverrides() {
+  const [overrides, adminEdits] = await Promise.all([loadOverrides(), loadAdminEdits()]);
+  return { overrides, adminEdits };
 }
 
 function keywordScore(profile: MergedCareerProfile, query: string): { score: number; reasons: string[] } {
@@ -69,19 +69,25 @@ function passesFilters(
   profile: MergedCareerProfile,
   params: SearchParams
 ): boolean {
-  if (params.location) {
-    const loc = params.location.toLowerCase();
-    const match = profile.known_locations.some((l) => l.toLowerCase().includes(loc));
-    if (!match) return false;
-  }
-
-  if (params.linkedin_verified && !profile.linkedin_verified && !profile.is_user_edited) {
+  if (params.location && !locationMatchesProfile(profile, params.location)) {
     return false;
   }
 
-  if (params.min_confidence != null && !profile.is_user_edited) {
+  if (params.linkedin_verified && !profile.linkedin_verified && !profile.is_user_edited && !profile.is_admin_edited) {
+    return false;
+  }
+
+  if (params.division && !profileMatchesDivision(profile, params.division)) {
+    return false;
+  }
+
+  if (params.min_confidence != null && !profile.is_user_edited && !profile.is_admin_edited) {
     const conf = profile.confidence_score ?? 0;
     if (conf < params.min_confidence) return false;
+  }
+
+  if (!isEligibleForCareersSearch(profile)) {
+    return false;
   }
 
   return true;
@@ -93,20 +99,31 @@ function toSearchResult(
   matchReasons: string[],
   authenticated: boolean
 ): CareerSearchResult {
+  const summaryPrefix =
+    !authenticated && profile.career_summary
+      ? summaryNamePrefix(profile.full_name, profile.career_summary)
+      : null;
+
   return {
     player_uid: profile.player_uid,
-    full_name: authenticated ? profile.full_name : null,
+    full_name: normalizeDisplayName(profile.full_name),
     name_blurred: !authenticated,
     career_field: profile.career_field,
     current_role: profile.current_role,
     education: profile.education,
     career_summary: profile.career_summary,
+    career_summary_name_prefix: summaryPrefix,
     known_locations: profile.known_locations,
     confidence_score: profile.confidence_score,
-    confidence_label: confidenceLabel(profile.confidence_score, profile.is_user_edited),
+    confidence_label: confidenceLabel(
+      profile.confidence_score,
+      profile.is_user_edited,
+      profile.is_admin_edited
+    ),
     linkedin_verified: profile.linkedin_verified,
     provenance: profile.provenance,
     is_user_edited: profile.is_user_edited,
+    is_admin_edited: profile.is_admin_edited,
     open_to_career_chats: authenticated ? profile.open_to_career_chats : false,
     score,
     match_reasons: matchReasons,
@@ -116,29 +133,37 @@ function toSearchResult(
 export async function searchCareers(params: SearchParams): Promise<{
   results: CareerSearchResult[];
   total: number;
+  offset: number;
+  limit: number;
+  has_more: boolean;
 }> {
-  const overrides = await loadOverrides();
+  const { overrides, adminEdits } = await loadAllOverrides();
   const scraped = getAllScrapedMerged();
-  const profiles = mergeProfiles(scraped, overrides);
+  const profiles = mergeProfiles(scraped, overrides, adminEdits);
   const filtered = profiles.filter((p) => passesFilters(p, params));
 
   const query = params.query?.trim() || "";
-  const topK = params.top_k ?? 25;
+  const offset = Math.max(0, params.offset ?? 0);
+  const limit = params.limit ?? params.top_k ?? 30;
   const authenticated = params.authenticated ?? false;
 
   if (!query) {
-    const sorted = filtered
-      .sort((a, b) => {
-        if (a.is_user_edited !== b.is_user_edited) return a.is_user_edited ? -1 : 1;
+    const sorted = filtered.sort((a, b) => {
+        const rank = (p: MergedCareerProfile) =>
+          p.is_user_edited ? 2 : p.is_admin_edited ? 1 : 0;
+        const ra = rank(a);
+        const rb = rank(b);
+        if (ra !== rb) return rb - ra;
         return (b.confidence_score ?? 0) - (a.confidence_score ?? 0);
-      })
-      .slice(0, topK);
+      });
 
+    const page = sorted.slice(offset, offset + limit);
     return {
-      results: sorted.map((p) =>
-        toSearchResult(p, p.confidence_score ?? 0, ["browse"], authenticated)
-      ),
-      total: filtered.length,
+      results: page.map((p) => toSearchResult(p, p.confidence_score ?? 0, ["browse"], authenticated)),
+      total: sorted.length,
+      offset,
+      limit,
+      has_more: offset + page.length < sorted.length,
     };
   }
 
@@ -158,57 +183,102 @@ export async function searchCareers(params: SearchParams): Promise<{
       semantic = dot;
       if (semantic > 0.35) reasons.push("semantic");
     }
-    const confidenceBoost = profile.is_user_edited ? 0.05 : (profile.confidence_score ?? 0) * 0.1;
+    const confidenceBoost =
+      profile.is_user_edited ? 0.05 : profile.is_admin_edited ? 0.04 : (profile.confidence_score ?? 0) * 0.1;
     const total = kwScore + semantic + confidenceBoost;
     return { profile, total, reasons: [...new Set(reasons)] };
   });
 
   scored.sort((a, b) => b.total - a.total);
 
-  const results = scored
-    .filter((s) => s.total > 0.05 || query.length <= 2)
-    .slice(0, topK)
-    .map((s) => toSearchResult(s.profile, s.total, s.reasons, authenticated));
+  const ranked = scored.filter((s) => s.total > 0.05 || query.length <= 2);
+  const page = ranked.slice(offset, offset + limit);
 
-  return { results, total: filtered.length };
+  return {
+    results: page.map((s) => toSearchResult(s.profile, s.total, s.reasons, authenticated)),
+    total: ranked.length,
+    offset,
+    limit,
+    has_more: offset + page.length < ranked.length,
+  };
+}
+
+export async function resolveMergedProfile(uid: string): Promise<MergedCareerProfile | null> {
+  const { overrides, adminEdits } = await loadAllOverrides();
+  const override = overrides.find((o) => (o.player_uid || `user:${o.user_id}`) === uid);
+  if (override) return overrideToMerged(override);
+
+  const admin = adminEdits.find((a) => a.player_uid === uid);
+  if (admin) return adminEditToMerged(admin);
+
+  const { getMergedByUid } = await import("./loader");
+  return getMergedByUid(uid);
 }
 
 export async function getProfileForDisplay(
   uid: string,
   authenticated: boolean,
   requestingUserId?: string
-): Promise<(MergedCareerProfile & { can_claim: boolean }) | null> {
-  const overrides = await loadOverrides();
-  const override = overrides.find((o) => (o.player_uid || `user:${o.user_id}`) === uid);
-  if (override) {
-    const merged = overrideToMerged(override);
-    return { ...merged, can_claim: false };
+): Promise<
+  (MergedCareerProfile & {
+    can_claim: boolean;
+    can_attempt_claim: boolean;
+    claimed_by_other: boolean;
+  }) | null
+> {
+  const { overrides } = await loadAllOverrides();
+  const merged = await resolveMergedProfile(uid);
+  if (!merged) return null;
+
+  if (!isEligibleForCareersSearch(merged)) {
+    return null;
   }
 
-  const { getMergedByUid } = await import("./loader");
-  const scraped = getMergedByUid(uid);
-  if (!scraped) return null;
+  const override = overrides.find((o) => (o.player_uid || `user:${o.user_id}`) === uid);
 
-  const alreadyClaimed = overrides.some((o) => o.player_uid === uid);
-  const canClaim = authenticated && !alreadyClaimed && Boolean(requestingUserId);
+  if (override) {
+    const isOwner = Boolean(requestingUserId && override.user_id === requestingUserId);
+    const claimedByOther = Boolean(requestingUserId && !isOwner);
+    return {
+      ...merged,
+      can_claim: false,
+      can_attempt_claim: false,
+      claimed_by_other: claimedByOther,
+    };
+  }
+
+  const existingClaim = overrides.find((o) => o.player_uid === uid);
+  const claimedByOther = Boolean(
+    existingClaim && requestingUserId && existingClaim.user_id !== requestingUserId
+  );
+  const canClaim = authenticated && !existingClaim && Boolean(requestingUserId);
+  const canAttemptClaim =
+    authenticated && Boolean(requestingUserId) && (!existingClaim || claimedByOther);
 
   if (!authenticated) {
     return {
-      ...scraped,
-      full_name: "Sign in to view",
+      ...merged,
+      full_name: merged.full_name,
       linkedin_url: null,
       email: null,
       open_to_career_chats: false,
       can_claim: false,
+      can_attempt_claim: false,
+      claimed_by_other: false,
     };
   }
 
-  return { ...scraped, can_claim: canClaim };
+  return {
+    ...merged,
+    can_claim: canClaim,
+    can_attempt_claim: canAttemptClaim,
+    claimed_by_other: claimedByOther,
+  };
 }
 
 export async function findClaimCandidates(userFullName: string, limit = 5) {
+  const { overrides } = await loadAllOverrides();
   const scraped = getAllScrapedMerged();
-  const overrides = await loadOverrides();
   const claimed = new Set(overrides.map((o) => o.player_uid).filter(Boolean));
 
   const { namesMatch } = await import("./names");

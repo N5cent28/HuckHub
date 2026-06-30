@@ -3,11 +3,13 @@ export async function sendImpersonationReportEmail({
   reporterEmail,
   reportedPlayerUid,
   message,
+  evidenceNotes,
 }: {
   reporterUserId: string;
   reporterEmail: string;
   reportedPlayerUid?: string;
   message: string;
+  evidenceNotes?: string;
 }) {
   const adminEmail = "noahryannicol@gmail.com";
   console.log("[Careers impersonation report]", {
@@ -16,6 +18,7 @@ export async function sendImpersonationReportEmail({
     reporterEmail,
     reportedPlayerUid,
     message,
+    evidenceNotes,
   });
 
   // Reuse nodemailer when SMTP is configured
@@ -30,8 +33,16 @@ export async function sendImpersonationReportEmail({
     await transporter.sendMail({
       from: process.env.FROM_EMAIL || process.env.SMTP_USER,
       to: adminEmail,
-      subject: "[HuckHub Careers] Impersonation report",
-      text: `Reporter: ${reporterEmail} (${reporterUserId})\nProfile: ${reportedPlayerUid}\n\n${message}`,
+      subject: "[HuckHub Careers] Profile claim dispute",
+      text: [
+        `Reporter: ${reporterEmail} (${reporterUserId})`,
+        `Profile: ${reportedPlayerUid}`,
+        "",
+        "Claim statement:",
+        message,
+        "",
+        evidenceNotes ? `Evidence offered:\n${evidenceNotes}` : "No evidence notes provided.",
+      ].join("\n"),
     });
   }
 }

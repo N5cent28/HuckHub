@@ -13,7 +13,10 @@ export function CareersHeader({ authenticated }: { authenticated?: boolean }) {
           </div>
         </Link>
         <nav className="flex items-center gap-2 sm:gap-3 text-sm shrink-0">
-          <Link href="/dashboard" className="text-slate-600 hover:text-sky-700 px-2 py-1 hidden sm:inline">
+          <Link href="/" className="text-slate-500 hover:text-sky-700 px-2 py-1 hidden sm:inline">
+            HuckHub
+          </Link>
+          <Link href="/throwing" className="text-slate-600 hover:text-sky-700 px-2 py-1 hidden sm:inline">
             Throwing
           </Link>
           {authenticated ? (

@@ -1,191 +1,90 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { Disc, Briefcase } from "lucide-react";
 
 export default function Home() {
-  const [showDonationModal, setShowDonationModal] = useState(false);
-  const [emailCopied, setEmailCopied] = useState(false);
-
-  const handleCopyEmail = async () => {
-    try {
-      await navigator.clipboard.writeText("noahryannicol@gmail.com");
-      setEmailCopied(true);
-      setTimeout(() => setEmailCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy email:", err);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <Image
-              src="/icon-192x192.png"
-              alt="HuckHub Logo"
-              width={120}
-              height={120}
-              priority
-              className="rounded-full"
-            />
-          </div>
-          
-          {/* Main heading */}
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
-            HuckHub
-          </h1>
-          <h2 className="text-xl md:text-2xl text-gray-300 mb-8">
-            Madison community throwing
-          </h2>
-          
-          {/* Description */}
-          <p className="text-lg text-gray-300 mb-12 max-w-2xl mx-auto">
-            Find throwing partners for spontaneous tossing at your favorite local parks!
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+        <div className="text-center mb-10 max-w-lg">
+          <Image
+            src="/icon-192x192.png"
+            alt="HuckHub"
+            width={88}
+            height={88}
+            priority
+            className="rounded-full mx-auto mb-5"
+          />
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">HuckHub</h1>
+          <p className="text-slate-400 mt-2 text-sm md:text-base">
+            Ultimate community tools for the field and beyond
           </p>
-          
-          {/* Features */}
-          <div className="grid md:grid-cols-2 gap-6 mb-12 max-w-4xl mx-auto">
-            <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-lg">
-              <h3 className="font-semibold text-lg mb-2 text-white">Real-time Matching</h3>
-              <p className="text-gray-300">Find players looking to throw right now</p>
-            </div>
-            <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-lg">
-              <h3 className="font-semibold text-lg mb-2 text-white">Skill-based Pairing</h3>
-              <p className="text-gray-300">Match with players at your skill level</p>
-            </div>
-            <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-lg">
-              <h3 className="font-semibold text-lg mb-2 text-white">Location-based Suggestions</h3>
-              <p className="text-gray-300">Find partners at your preferred parks</p>
-            </div>
-            <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-lg">
-              <h3 className="font-semibold text-lg mb-2 text-white">Instant Notifications</h3>
-              <p className="text-gray-300">Get notified instantly when someone wants to throw</p>
-            </div>
-          </div>
-          
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
-            <Link
-              href="/auth/signup"
-              className="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg"
-            >
-              Sign Up
-            </Link>
-            <Link
-              href="/auth/login"
-              className="border-2 border-green-500 text-green-500 hover:bg-green-500 hover:text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg"
-            >
-              Login
-            </Link>
-            <Link
-              href="/careers"
-              className="border-2 border-sky-400 text-sky-300 hover:bg-sky-500 hover:text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg"
-            >
-              HuckHub Careers
-            </Link>
-            <button
-              onClick={() => setShowDonationModal(true)}
-              className="border-2 border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg"
-            >
-              Donate
-            </button>
-          </div>
         </div>
-      </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-800 border-t border-gray-700 py-8 mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center mb-4 md:mb-0">
-              <Image
-                src="/icon-192x192.png"
-                alt="HuckHub Logo"
-                width={32}
-                height={32}
-                className="rounded-full mr-3"
-              />
-              <span className="text-gray-300 text-sm">© 2025 HuckHub</span>
+        <div className="grid md:grid-cols-2 gap-5 w-full max-w-4xl">
+          <Link
+            href="/throwing"
+            className="group relative overflow-hidden rounded-2xl border border-emerald-800/60 bg-gradient-to-br from-gray-900 via-gray-900 to-emerald-950 p-8 md:p-10 transition-all hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-900/20"
+          >
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div className="p-3 rounded-xl bg-emerald-500/15 text-emerald-400">
+                <Disc className="h-8 w-8" />
+              </div>
+              <span className="text-emerald-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                Enter →
+              </span>
             </div>
-            <div className="flex space-x-6">
-              <Link href="/terms" className="text-gray-400 hover:text-gray-300 text-sm">
-                Terms of Service
-              </Link>
-              <Link href="/privacy" className="text-gray-400 hover:text-gray-300 text-sm">
-                Privacy Policy
-              </Link>
+            <h2 className="text-2xl font-bold text-white mb-2">Throwing</h2>
+            <p className="text-slate-300 text-sm leading-relaxed mb-4">
+              Find throwing partners in Madison&apos;s ultimate community. Match by skill, park,
+              and availability — then get out and toss.
+            </p>
+            <ul className="text-slate-400 text-xs space-y-1">
+              <li>Real-time partner matching</li>
+              <li>Park preferences &amp; notifications</li>
+              <li>Free account required</li>
+            </ul>
+          </Link>
+
+          <Link
+            href="/careers"
+            className="group relative overflow-hidden rounded-2xl border border-sky-800/50 bg-gradient-to-br from-slate-900 via-slate-900 to-sky-950 p-8 md:p-10 transition-all hover:border-sky-400/50 hover:shadow-lg hover:shadow-sky-900/20"
+          >
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div className="p-3 rounded-xl bg-sky-500/15 text-sky-400">
+                <Briefcase className="h-8 w-8" />
+              </div>
+              <span className="text-sky-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                Browse →
+              </span>
             </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Careers</h2>
+            <p className="text-slate-300 text-sm leading-relaxed mb-4">
+              Discover what ultimate players do off the field. Search by career, city, or name —
+              and connect through shared community ties.
+            </p>
+            <ul className="text-slate-400 text-xs space-y-1">
+              <li>Search the ultimate career network</li>
+              <li>No account needed to browse</li>
+              <li>Sign in to view names &amp; LinkedIn</li>
+            </ul>
+          </Link>
+        </div>
+      </main>
+
+      <footer className="border-t border-slate-800 py-6 px-4">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-500">
+          <span>© 2025 HuckHub</span>
+          <div className="flex gap-5">
+            <Link href="/terms" className="hover:text-slate-300">
+              Terms
+            </Link>
+            <Link href="/privacy" className="hover:text-slate-300">
+              Privacy
+            </Link>
           </div>
         </div>
       </footer>
-
-      {/* Donation Modal */}
-      {showDonationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 border border-gray-700 rounded-lg max-w-md w-full p-6 shadow-xl">
-            <div className="text-center">
-              <h3 className="text-2xl font-bold text-white mb-4">Support HuckHub 💝</h3>
-              
-              <div className="text-gray-300 mb-6 space-y-3 text-left">
-                <p>
-                  Hey! I'm Noah, the creator of HuckHub. I hope you enjoy using this app to become 
-                  stronger throwers and to connect with Madison's ultimate community!
-                </p>
-                <p>
-                  With your participation, I truly believe we can make an impact on Madison's throwing 
-                  scene—from newer players who don't yet have tossing partners to frisbee fanatics 
-                  like me, it could help us all spend more time throwing and place names with familiar faces.
-                </p>
-                <p>
-                  If you like what you see and want to help keep it going, any contribution is deeply 
-                  appreciated. Your support covers hosting and domain costs—and helps keep this 
-                  unemployed dumpster-diver fed while I keep improving the app for everyone :)
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <a
-                  href="https://account.venmo.com/u/Noah-Nicol"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-                >
-                  💙 Venmo (@Noah-Nicol)
-                </a>
-                <button
-                  onClick={handleCopyEmail}
-                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors cursor-pointer relative"
-                >
-                  <div className="text-center">
-                    <div className="font-bold mb-1">💛 PayPal</div>
-                    <div className="text-sm">noahryannicol@gmail.com</div>
-                    {emailCopied && (
-                      <div className="text-xs mt-2 text-yellow-100 transition-opacity duration-300">
-                        Email copied to clipboard
-                      </div>
-                    )}
-                  </div>
-                </button>
-              </div>
-
-              <p className="text-sm text-gray-400 mt-4">
-                Thank you so much for being part of the community! 🙏
-              </p>
-
-              <button
-                onClick={() => setShowDonationModal(false)}
-                className="mt-4 text-gray-400 hover:text-gray-300 text-sm underline"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

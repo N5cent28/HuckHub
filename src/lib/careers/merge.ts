@@ -1,4 +1,4 @@
-import type { CareerProfileOverride, MergedCareerProfile } from "./types";
+import { normalizeLinkedInUrls } from "./linkedin";
 import { loadCareersDataset, scrapedToMerged } from "./loader";
 import { EMBEDDING_DIM } from "./loader";
 
@@ -27,7 +27,8 @@ export function buildEmbedSourceText(fields: {
 export function overrideToMerged(override: CareerProfileOverride): MergedCareerProfile {
   const dataset = loadCareersDataset();
   const scraped = override.player_uid ? dataset.profiles.get(override.player_uid) : null;
-  const teams = override.player_uid ? dataset.teams.get(override.player_uid) || [] : [];
+  const teams_played = override.player_uid ? dataset.teamsPlayed.get(override.player_uid) || [] : [];
+  const teams_coached = override.player_uid ? dataset.teamsCoached.get(override.player_uid) || [] : [];
 
   let embedding: Float32Array | null = null;
   if (override.embedding && override.embedding.length === EMBEDDING_DIM) {
@@ -45,14 +46,65 @@ export function overrideToMerged(override: CareerProfileOverride): MergedCareerP
     confidence_score: scraped?.confidence_score ?? 1,
     linkedin_verified: Boolean(override.linkedin_url),
     linkedin_url: override.linkedin_url,
+    linkedin_urls: normalizeLinkedInUrls({ linkedin_url: override.linkedin_url }),
     llm_rationale: scraped?.llm_rationale ?? null,
     known_locations: override.known_locations || [],
-    teams,
+    teams_played,
+    teams_coached,
     provenance: "user",
     is_user_edited: true,
+    is_admin_edited: false,
     open_to_career_chats: override.open_to_career_chats,
     email: override.email,
+    age_point_estimate_2026: scraped?.age_point_estimate_2026 ?? null,
+    age_min_2026: scraped?.age_min_2026 ?? null,
+    age_max_2026: scraped?.age_max_2026 ?? null,
+    age_source: scraped?.age_source ?? null,
+    age_confidence: scraped?.age_confidence ?? null,
     embed_source_text: override.embed_source_text,
+    embedding,
+    embedding_index: null,
+  };
+}
+
+export function adminEditToMerged(edit: CareerAdminEdit): MergedCareerProfile {
+  const dataset = loadCareersDataset();
+  const scraped = dataset.profiles.get(edit.player_uid);
+  const teams_played = dataset.teamsPlayed.get(edit.player_uid) || [];
+  const teams_coached = dataset.teamsCoached.get(edit.player_uid) || [];
+
+  let embedding: Float32Array | null = null;
+  if (edit.embedding && edit.embedding.length === EMBEDDING_DIM) {
+    embedding = new Float32Array(edit.embedding);
+  }
+
+  return {
+    player_uid: edit.player_uid,
+    full_name: edit.full_name,
+    source: scraped?.source || "admin",
+    career_field: edit.career_field,
+    current_role: edit.current_role,
+    education: edit.education,
+    career_summary: edit.career_summary,
+    confidence_score: scraped?.confidence_score ?? 1,
+    linkedin_verified: Boolean(edit.linkedin_url),
+    linkedin_url: edit.linkedin_url,
+    linkedin_urls: normalizeLinkedInUrls({ linkedin_url: edit.linkedin_url }),
+    llm_rationale: scraped?.llm_rationale ?? null,
+    known_locations: edit.known_locations || [],
+    teams_played,
+    teams_coached,
+    provenance: "admin",
+    is_user_edited: false,
+    is_admin_edited: true,
+    open_to_career_chats: false,
+    email: null,
+    age_point_estimate_2026: scraped?.age_point_estimate_2026 ?? null,
+    age_min_2026: scraped?.age_min_2026 ?? null,
+    age_max_2026: scraped?.age_max_2026 ?? null,
+    age_source: scraped?.age_source ?? null,
+    age_confidence: scraped?.age_confidence ?? null,
+    embed_source_text: edit.embed_source_text,
     embedding,
     embedding_index: null,
   };
@@ -60,16 +112,25 @@ export function overrideToMerged(override: CareerProfileOverride): MergedCareerP
 
 export function mergeProfiles(
   scrapedList: MergedCareerProfile[],
-  overrides: CareerProfileOverride[]
+  overrides: CareerProfileOverride[],
+  adminEdits: CareerAdminEdit[] = []
 ): MergedCareerProfile[] {
-  const overriddenUids = new Set(
+  const userOverrideUids = new Set(
     overrides.map((o) => o.player_uid).filter(Boolean) as string[]
   );
+  const adminEditUids = new Set(adminEdits.map((a) => a.player_uid));
+
   const merged: MergedCareerProfile[] = [];
 
   for (const scraped of scrapedList) {
-    if (overriddenUids.has(scraped.player_uid)) continue;
+    if (userOverrideUids.has(scraped.player_uid)) continue;
+    if (adminEditUids.has(scraped.player_uid)) continue;
     merged.push(scraped);
+  }
+
+  for (const edit of adminEdits) {
+    if (userOverrideUids.has(edit.player_uid)) continue;
+    merged.push(adminEditToMerged(edit));
   }
 
   for (const override of overrides) {
