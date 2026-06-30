@@ -24,9 +24,8 @@ export function normalizeLinkedInUrls(profile: {
   return out;
 }
 
-/** Short label for a LinkedIn URL, e.g. linkedin.com/in/liu-al → liu-al */
-export function linkedInCandidateLabel(url: string, index: number): string {
-  const slug = url.replace(/\/$/, "").split("/").pop();
-  if (slug && slug !== "in") return slug;
+/** Button label for a LinkedIn profile link on the careers profile page. */
+export function linkedInButtonLabel(index: number, candidateCount: number): string {
+  if (candidateCount <= 1) return "LinkedIn";
   return `Candidate ${index + 1}`;
 }

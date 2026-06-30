@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { careersFetch } from "@/lib/careers/client";
-import { linkedInCandidateLabel } from "@/lib/careers/linkedin";
+import { linkedInButtonLabel } from "@/lib/careers/linkedin";
 import type { ProfileVoteStats, VoteAspect, VoteValue } from "@/lib/careers/votes";
-import { ExternalLink, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ThumbsDown, ThumbsUp } from "lucide-react";
 
 function VoteStatLine({
   label,
@@ -181,9 +181,8 @@ export function ProfileCommunityVotes({
                 total: 0,
                 percent_accurate: null,
               };
-              const label = linkedInCandidateLabel(url, index);
               const voteLabel = multipleCandidates
-                ? `LinkedIn candidate ${index + 1} (${label})`
+                ? linkedInButtonLabel(index, linkedinUrls.length)
                 : "LinkedIn match";
 
               if (singleLinkedIn) {
@@ -193,15 +192,8 @@ export function ProfileCommunityVotes({
                     className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                   >
                     <div className="min-w-0 space-y-1">
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs bg-[#0A66C2] text-white px-3 py-1.5 rounded-md hover:opacity-90"
-                      >
-                        {label} <ExternalLink className="h-3 w-3" />
-                      </a>
-                      <VoteStatLine label={`${label} is the right person`} stats={urlStats} />
+                      <p className="text-xs text-slate-700">LinkedIn match</p>
+                      <VoteStatLine label="this LinkedIn is the right person" stats={urlStats} />
                     </div>
                     {authenticated ? (
                       <VoteButtons
@@ -218,14 +210,6 @@ export function ProfileCommunityVotes({
 
               return (
                 <div key={url} className="rounded-md border border-slate-100 p-2.5 space-y-2">
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs bg-[#0A66C2] text-white px-3 py-1.5 rounded-md hover:opacity-90"
-                  >
-                    {label} <ExternalLink className="h-3 w-3" />
-                  </a>
                   <VoteRow
                     label={voteLabel}
                     stats={urlStats}

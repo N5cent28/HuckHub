@@ -1,5 +1,10 @@
 import type { CareerSearchResult, MergedCareerProfile } from "./types";
-import { confidenceLabel, normalizeDisplayName, summaryNamePrefix } from "./names";
+import {
+  confidenceLabel,
+  normalizeDisplayName,
+  normalizeNameForMatch,
+  summaryNamePrefix,
+} from "./names";
 import { isEligibleForCareersSearch } from "./age";
 import { locationMatchesProfile } from "./locations";
 import { profileMatchesDivision } from "./teams";
@@ -31,7 +36,13 @@ function keywordScore(profile: MergedCareerProfile, query: string): { score: num
   let score = 0;
 
   const nameNorm = normalizeDisplayName(profile.full_name).toLowerCase();
-  if (nameNorm.includes(q) || q.split(/\s+/).every((t) => nameNorm.includes(t))) {
+  const queryNorm = normalizeNameForMatch(query);
+  const profileNorm = normalizeNameForMatch(profile.full_name);
+
+  if (queryNorm && profileNorm === queryNorm) {
+    score += 5;
+    reasons.push("exact_name");
+  } else if (nameNorm.includes(q) || q.split(/\s+/).every((t) => nameNorm.includes(t))) {
     score += 1.2;
     reasons.push("name");
   }
@@ -149,17 +160,21 @@ export async function searchCareers(params: SearchParams): Promise<{
 
   if (!query) {
     const sorted = filtered.sort((a, b) => {
-        const rank = (p: MergedCareerProfile) =>
-          p.is_user_edited ? 2 : p.is_admin_edited ? 1 : 0;
-        const ra = rank(a);
-        const rb = rank(b);
-        if (ra !== rb) return rb - ra;
-        return (b.confidence_score ?? 0) - (a.confidence_score ?? 0);
-      });
+      const rank = (p: MergedCareerProfile) =>
+        p.is_user_edited ? 2 : p.is_admin_edited ? 1 : 0;
+      const ra = rank(a);
+      const rb = rank(b);
+      if (ra !== rb) return rb - ra;
+      return normalizeDisplayName(a.full_name).localeCompare(
+        normalizeDisplayName(b.full_name),
+        undefined,
+        { sensitivity: "base" }
+      );
+    });
 
     const page = sorted.slice(offset, offset + limit);
     return {
-      results: page.map((p) => toSearchResult(p, p.confidence_score ?? 0, ["browse"], authenticated)),
+      results: page.map((p) => toSearchResult(p, 0, ["browse"], authenticated)),
       total: sorted.length,
       offset,
       limit,
@@ -183,13 +198,18 @@ export async function searchCareers(params: SearchParams): Promise<{
       semantic = dot;
       if (semantic > 0.35) reasons.push("semantic");
     }
-    const confidenceBoost =
-      profile.is_user_edited ? 0.05 : profile.is_admin_edited ? 0.04 : (profile.confidence_score ?? 0) * 0.1;
-    const total = kwScore + semantic + confidenceBoost;
+    const total = kwScore + semantic;
     return { profile, total, reasons: [...new Set(reasons)] };
   });
 
-  scored.sort((a, b) => b.total - a.total);
+  scored.sort((a, b) => {
+    if (b.total !== a.total) return b.total - a.total;
+    return normalizeDisplayName(a.profile.full_name).localeCompare(
+      normalizeDisplayName(b.profile.full_name),
+      undefined,
+      { sensitivity: "base" }
+    );
+  });
 
   const ranked = scored.filter((s) => s.total > 0.05 || query.length <= 2);
   const page = ranked.slice(offset, offset + limit);

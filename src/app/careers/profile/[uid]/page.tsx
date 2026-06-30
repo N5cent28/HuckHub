@@ -7,11 +7,12 @@ import { CareersHeader } from "@/components/careers/CareersHeader";
 import { ProfileConfidence } from "@/components/careers/ProfileConfidence";
 import { BlurredName, BlurredSummary } from "@/components/careers/BlurredText";
 import { careersFetch, useCareersAuth } from "@/lib/careers/client";
+import { linkedInButtonLabel } from "@/lib/careers/linkedin";
 import { formatTeamDivision } from "@/lib/careers/teams";
 import { ProfileCommunityVotes } from "@/components/careers/ProfileCommunityVotes";
 import type { ProfileVoteStats } from "@/lib/careers/votes";
 import type { TeamEntry } from "@/lib/careers/types";
-import { UserCheck, Pencil } from "lucide-react";
+import { UserCheck, Pencil, ExternalLink } from "lucide-react";
 
 type TeamRow = TeamEntry & { division: string | null };
 
@@ -248,6 +249,23 @@ function CareerProfileContent() {
               <section>
                 <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">Education</h2>
                 <p className="text-slate-700">{profile.education}</p>
+              </section>
+            )}
+
+            {authenticated && profile.linkedin_urls.length > 0 && (
+              <section className="flex flex-wrap gap-2">
+                {profile.linkedin_urls.map((url, index) => (
+                  <a
+                    key={url}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm bg-[#0A66C2] text-white px-4 py-2 rounded-lg hover:opacity-90"
+                  >
+                    {linkedInButtonLabel(index, profile.linkedin_urls.length)}
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                ))}
               </section>
             )}
 
