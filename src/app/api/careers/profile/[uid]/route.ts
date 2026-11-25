@@ -55,6 +55,7 @@ export async function GET(
       can_claim: profile.can_claim,
       can_attempt_claim: profile.can_attempt_claim,
       claimed_by_other: profile.claimed_by_other,
+      is_owner: profile.is_owner,
       vote_stats: voteStats,
       is_admin: isAdmin(user?.id),
     };

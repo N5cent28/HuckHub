@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 MUFA_Email.txt
+
+# Careers directory lives in Supabase Postgres now (ExpertScraper publish-careers)
+/data/careers/

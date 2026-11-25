@@ -46,3 +46,43 @@ export async function sendImpersonationReportEmail({
     });
   }
 }
+
+export async function sendRemovalRequestEmail({
+  playerUid,
+  profileName,
+  requesterEmail,
+  requesterUserId,
+  message,
+}: {
+  playerUid: string;
+  profileName: string | null;
+  requesterEmail: string;
+  requesterUserId: string | null;
+  message: string;
+}) {
+  const adminEmail = "noahryannicol@gmail.com";
+  console.log("[Careers removal request]", { to: adminEmail, playerUid, requesterUserId });
+
+  if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+    const nodemailer = await import("nodemailer");
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: false,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    });
+    await transporter.sendMail({
+      from: process.env.FROM_EMAIL || process.env.SMTP_USER,
+      to: adminEmail,
+      subject: "[HuckHub Careers] Profile removal request",
+      text: [
+        `Profile: ${profileName ?? "(unknown)"} (${playerUid})`,
+        `Requester: ${requesterEmail}${requesterUserId ? ` (${requesterUserId})` : " (not signed in)"}`,
+        "",
+        message ? `Message:\n${message}` : "No message provided.",
+        "",
+        "Review at /careers/admin/removals",
+      ].join("\n"),
+    });
+  }
+}

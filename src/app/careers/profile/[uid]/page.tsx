@@ -10,6 +10,7 @@ import { careersFetch, useCareersAuth } from "@/lib/careers/client";
 import { linkedInButtonLabel } from "@/lib/careers/linkedin";
 import { formatTeamDivision } from "@/lib/careers/teams";
 import { ProfileCommunityVotes } from "@/components/careers/ProfileCommunityVotes";
+import { RemoveProfileSection } from "@/components/careers/RemoveProfileSection";
 import type { ProfileVoteStats } from "@/lib/careers/votes";
 import type { TeamEntry } from "@/lib/careers/types";
 import { UserCheck, Pencil, ExternalLink } from "lucide-react";
@@ -75,6 +76,7 @@ interface ProfileDetail {
   can_claim: boolean;
   can_attempt_claim: boolean;
   claimed_by_other: boolean;
+  is_owner: boolean;
   vote_stats: ProfileVoteStats;
   is_admin: boolean;
 }
@@ -376,6 +378,15 @@ function CareerProfileContent() {
                 </div>
               </div>
             )}
+
+            <div className="border-t border-slate-100 pt-3">
+              <RemoveProfileSection
+                playerUid={uid}
+                token={token}
+                authenticated={authenticated}
+                isOwner={profile.is_owner}
+              />
+            </div>
           </div>
         </article>
       </main>

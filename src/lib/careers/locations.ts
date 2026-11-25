@@ -1,4 +1,4 @@
-import type { MergedCareerProfile, TeamEntry } from "./types";
+import type { MergedCareerProfile } from "./types";
 
 /** Collapse whitespace and normalize comma spacing: "Madison , Wisconsin" → "Madison, Wisconsin". */
 export function normalizeLocationString(loc: string): string {
@@ -98,23 +98,29 @@ function collectProfileLocations(profile: MergedCareerProfile): string[] {
   return locs;
 }
 
-/** True when a profile's locations match the user's location filter. */
-export function locationMatchesProfile(profile: MergedCareerProfile, filter: string): boolean {
+/** True when one location string matches the user's location filter. */
+export function locationStringMatches(loc: string, filter: string): boolean {
   const trimmed = filter.trim();
   if (!trimmed) return true;
-
   const filterNorm = normalizeLocationString(trimmed).toLowerCase();
-  const profileLocs = collectProfileLocations(profile);
+  const l = normalizeLocationString(loc);
+  if (l.toLowerCase().includes(filterNorm)) return true;
+  if (filterNorm.includes(",")) return cityStateMatches(l, trimmed);
+  return parseCityState(l)?.city === filterNorm;
+}
 
-  if (profileLocs.some((l) => l.toLowerCase().includes(filterNorm))) {
-    return true;
-  }
+/** True when a profile's locations match the user's location filter. */
+export function locationMatchesProfile(profile: MergedCareerProfile, filter: string): boolean {
+  if (!filter.trim()) return true;
+  return collectProfileLocations(profile).some((l) => locationStringMatches(l, filter));
+}
 
-  if (filterNorm.includes(",")) {
-    return profileLocs.some((l) => cityStateMatches(l, trimmed));
-  }
-
-  return profileLocs.some((l) => parseCityState(l)?.city === filterNorm);
+/**
+ * Resolve a free-text location filter to the exact team_location strings it
+ * matches, so Postgres can filter with an equality lookup.
+ */
+export function resolveLocationFilter(filter: string, allLocations: string[]): string[] {
+  return allLocations.filter((loc) => locationStringMatches(loc, filter));
 }
 
 export function normalizeLocationList(locs: string[]): string[] {
@@ -129,27 +135,4 @@ export function normalizeLocationList(locs: string[]): string[] {
     out.push(n);
   }
   return out;
-}
-
-export function distinctLocationsFromProfiles(
-  profiles: { known_locations?: string[]; teams_played?: TeamEntry[]; teams_coached?: TeamEntry[] }[]
-): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const profile of profiles) {
-    const locs = [
-      ...(profile.known_locations || []),
-      ...(profile.teams_played || []).map((t) => t.team_location).filter(Boolean) as string[],
-      ...(profile.teams_coached || []).map((t) => t.team_location).filter(Boolean) as string[],
-    ];
-    for (const loc of locs) {
-      const n = normalizeLocationString(loc);
-      if (!n) continue;
-      const key = n.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(n);
-    }
-  }
-  return out.sort((a, b) => a.localeCompare(b));
 }

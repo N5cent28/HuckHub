@@ -9,41 +9,23 @@ export interface TeamEntry {
   role?: TeamRole;
 }
 
-/** Team row as stored on scraped profiles (playing_teams / coached_teams). */
-export interface RawProfileTeam {
-  team_name: string;
-  year: number;
-  competition_level: string | null;
-  location?: string | null;
-  division_name?: string | null;
-  team_location?: string | null;
-}
-
+/** Scraped directory profile as read from Postgres (career_profiles_by_uid). */
 export interface ScrapedCareerProfile {
   player_uid: string;
   full_name: string;
-  source: string;
   career_field: string | null;
   current_role: string | null;
   education: string | null;
   career_summary: string | null;
   confidence_score: number | null;
-  linkedin_verified: boolean;
-  linkedin_url: string | null;
-  linkedin_urls?: string[];
+  linkedin_urls: string[];
   llm_rationale: string | null;
-  updated_at: string;
-  embed_source_text: string | null;
-  embedded_at: string | null;
+  /** First year the player is estimated to be 18+; null = no age gate. */
+  adult_from_year: number | null;
+  has_embedding: boolean;
   known_locations: string[];
-  age_point_estimate_2026: number | null;
-  age_min_2026: number | null;
-  age_max_2026: number | null;
-  age_source: string | null;
-  age_confidence: string | null;
-  openalex_count: number;
-  playing_teams?: RawProfileTeam[];
-  coached_teams?: RawProfileTeam[];
+  teams_played: TeamEntry[];
+  teams_coached: TeamEntry[];
 }
 
 export interface CareerProfileOverride {
@@ -88,7 +70,6 @@ export type CareerProvenance = "user" | "admin" | "inferred";
 export interface MergedCareerProfile {
   player_uid: string;
   full_name: string;
-  source: string;
   career_field: string | null;
   current_role: string | null;
   education: string | null;
@@ -96,7 +77,7 @@ export interface MergedCareerProfile {
   confidence_score: number | null;
   linkedin_verified: boolean;
   linkedin_url: string | null;
-  linkedin_urls?: string[];
+  linkedin_urls: string[];
   llm_rationale: string | null;
   known_locations: string[];
   teams_played: TeamEntry[];
@@ -106,14 +87,9 @@ export interface MergedCareerProfile {
   is_admin_edited: boolean;
   open_to_career_chats: boolean;
   email: string | null;
-  age_point_estimate_2026: number | null;
-  age_min_2026: number | null;
-  age_max_2026: number | null;
-  age_source: string | null;
-  age_confidence: string | null;
-  embed_source_text: string | null;
+  adult_from_year: number | null;
+  /** Only set for member/admin edits (stored in Supabase); scraped vectors stay in Postgres. */
   embedding: Float32Array | null;
-  embedding_index: number | null;
 }
 
 export interface CareerSearchResult {
@@ -137,12 +113,11 @@ export interface CareerSearchResult {
   match_reasons: string[];
 }
 
-export interface CareersManifest {
+export interface CareersMeta {
   generated_at: string;
-  schema_version: string;
-  embedding_model: string;
-  embedding_dim: number;
   n_profiles: number;
+  n_with_career: number;
   n_embeddings: number;
-  checksums: Record<string, string>;
+  embedding_model: string;
+  schema_version: string;
 }

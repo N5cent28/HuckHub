@@ -1,6 +1,7 @@
 import type { CareerSearchResult, MergedCareerProfile } from "./types";
 import {
   confidenceLabel,
+  namesMatch,
   normalizeDisplayName,
   normalizeNameForMatch,
   summaryNamePrefix,
@@ -9,9 +10,17 @@ import { isEligibleForCareersSearch } from "./age";
 import { locationMatchesProfile } from "./locations";
 import { profileMatchesDivision } from "./teams";
 import { embedText } from "./embed";
-import { getAllScrapedMerged } from "./loader";
-import { mergeProfiles, overrideToMerged, adminEditToMerged } from "./merge";
-import { loadOverrides, loadAdminEdits } from "./db";
+import { mergeEditedProfiles, overrideToMerged, adminEditToMerged, scrapedToMerged } from "./merge";
+import { loadOverrides, loadAdminEdits, loadVerifiedLinkedIn } from "./db";
+import {
+  browseDirectory,
+  findNameCandidates,
+  getScrapedByUid,
+  getScrapedByUids,
+  searchDirectory,
+  type DirectoryFilters,
+  type DirectoryRow,
+} from "./directory";
 
 export interface SearchParams {
   query?: string;
@@ -25,9 +34,21 @@ export interface SearchParams {
   authenticated?: boolean;
 }
 
-async function loadAllOverrides() {
+/** Deepest result the search pages through (scored candidate pool is ~300–600). */
+const MAX_SEARCH_DEPTH = 600;
+
+/**
+ * Member/admin edits live in small Supabase tables and are merged in Node;
+ * the ~120K scraped profiles are filtered, scored, and paged in Postgres.
+ */
+async function loadEditedProfiles(): Promise<MergedCareerProfile[]> {
   const [overrides, adminEdits] = await Promise.all([loadOverrides(), loadAdminEdits()]);
-  return { overrides, adminEdits };
+  const uids = [
+    ...overrides.map((o) => o.player_uid).filter(Boolean),
+    ...adminEdits.map((a) => a.player_uid),
+  ] as string[];
+  const scraped = await getScrapedByUids(uids);
+  return mergeEditedProfiles(overrides, adminEdits, scraped);
 }
 
 function keywordScore(profile: MergedCareerProfile, query: string): { score: number; reasons: string[] } {
@@ -47,12 +68,13 @@ function keywordScore(profile: MergedCareerProfile, query: string): { score: num
     reasons.push("name");
   }
 
-  for (const loc of profile.known_locations) {
-    if (loc.toLowerCase().includes(q)) {
-      score += 0.9;
-      reasons.push("location");
-      break;
-    }
+  const locs = [
+    ...profile.known_locations,
+    ...[...profile.teams_played, ...profile.teams_coached].map((t) => t.team_location || ""),
+  ];
+  if (locs.some((loc) => loc.toLowerCase().includes(q))) {
+    score += 0.9;
+    reasons.push("location");
   }
 
   const textFields = [
@@ -76,32 +98,30 @@ function keywordScore(profile: MergedCareerProfile, query: string): { score: num
   return { score, reasons };
 }
 
-function passesFilters(
-  profile: MergedCareerProfile,
-  params: SearchParams
-): boolean {
-  if (params.location && !locationMatchesProfile(profile, params.location)) {
-    return false;
-  }
-
-  if (params.linkedin_verified && !profile.linkedin_verified && !profile.is_user_edited && !profile.is_admin_edited) {
-    return false;
-  }
-
-  if (params.division && !profileMatchesDivision(profile, params.division)) {
-    return false;
-  }
-
+function passesFilters(profile: MergedCareerProfile, params: SearchParams): boolean {
+  if (params.location && !locationMatchesProfile(profile, params.location)) return false;
+  if (params.linkedin_verified && !profile.linkedin_verified) return false;
+  if (params.division && !profileMatchesDivision(profile, params.division)) return false;
   if (params.min_confidence != null && !profile.is_user_edited && !profile.is_admin_edited) {
-    const conf = profile.confidence_score ?? 0;
-    if (conf < params.min_confidence) return false;
+    if ((profile.confidence_score ?? 0) < params.min_confidence) return false;
   }
+  return isEligibleForCareersSearch(profile);
+}
 
-  if (!isEligibleForCareersSearch(profile)) {
-    return false;
-  }
+/** Mark a profile verified when votes verified one of its current LinkedIn links. */
+function markVoteVerified(
+  profile: MergedCareerProfile,
+  pairs: { player_uid: string; linkedin_url: string }[] | undefined
+): MergedCareerProfile {
+  if (!pairs || profile.linkedin_verified) return profile;
+  const hit = pairs.some(
+    (v) => v.player_uid === profile.player_uid && profile.linkedin_urls.includes(v.linkedin_url)
+  );
+  return hit ? { ...profile, linkedin_verified: true } : profile;
+}
 
-  return true;
+function editRank(p: { is_user_edited: boolean; is_admin_edited: boolean }): number {
+  return p.is_user_edited ? 2 : p.is_admin_edited ? 1 : 0;
 }
 
 function toSearchResult(
@@ -110,11 +130,6 @@ function toSearchResult(
   matchReasons: string[],
   authenticated: boolean
 ): CareerSearchResult {
-  const summaryPrefix =
-    !authenticated && profile.career_summary
-      ? summaryNamePrefix(profile.full_name, profile.career_summary)
-      : null;
-
   return {
     player_uid: profile.player_uid,
     full_name: normalizeDisplayName(profile.full_name),
@@ -123,7 +138,10 @@ function toSearchResult(
     current_role: profile.current_role,
     education: profile.education,
     career_summary: profile.career_summary,
-    career_summary_name_prefix: summaryPrefix,
+    career_summary_name_prefix:
+      !authenticated && profile.career_summary
+        ? summaryNamePrefix(profile.full_name, profile.career_summary)
+        : null,
     known_locations: profile.known_locations,
     confidence_score: profile.confidence_score,
     confidence_label: confidenceLabel(
@@ -141,6 +159,18 @@ function toSearchResult(
   };
 }
 
+/** Directory rows only carry card fields; fill the rest with scraped defaults. */
+function rowToMerged(row: DirectoryRow): MergedCareerProfile {
+  return scrapedToMerged({
+    ...row,
+    llm_rationale: null,
+    adult_from_year: null,
+    has_embedding: false,
+    teams_played: [],
+    teams_coached: [],
+  });
+}
+
 export async function searchCareers(params: SearchParams): Promise<{
   results: CareerSearchResult[];
   total: number;
@@ -148,38 +178,45 @@ export async function searchCareers(params: SearchParams): Promise<{
   limit: number;
   has_more: boolean;
 }> {
-  const { overrides, adminEdits } = await loadAllOverrides();
-  const scraped = getAllScrapedMerged();
-  const profiles = mergeProfiles(scraped, overrides, adminEdits);
-  const filtered = profiles.filter((p) => passesFilters(p, params));
-
   const query = params.query?.trim() || "";
-  const offset = Math.max(0, params.offset ?? 0);
-  const limit = params.limit ?? params.top_k ?? 30;
+  const offset = Math.min(Math.max(0, params.offset ?? 0), MAX_SEARCH_DEPTH);
+  const limit = Math.min(params.limit ?? params.top_k ?? 30, 100);
   const authenticated = params.authenticated ?? false;
 
-  if (!query) {
-    const sorted = filtered.sort((a, b) => {
-      const rank = (p: MergedCareerProfile) =>
-        p.is_user_edited ? 2 : p.is_admin_edited ? 1 : 0;
-      const ra = rank(a);
-      const rb = rank(b);
-      if (ra !== rb) return rb - ra;
-      return normalizeDisplayName(a.full_name).localeCompare(
-        normalizeDisplayName(b.full_name),
-        undefined,
-        { sensitivity: "base" }
-      );
-    });
+  const verified = params.linkedin_verified ? await loadVerifiedLinkedIn() : undefined;
+  const edited = (await loadEditedProfiles())
+    .map((p) => markVoteVerified(p, verified))
+    .filter((p) => passesFilters(p, params));
+  const filters: DirectoryFilters = {
+    location: params.location,
+    division: params.division,
+    min_confidence: params.min_confidence,
+    verified,
+    exclude_uids: edited.map((p) => p.player_uid),
+  };
 
-    const page = sorted.slice(offset, offset + limit);
-    return {
-      results: page.map((p) => toSearchResult(p, 0, ["browse"], authenticated)),
-      total: sorted.length,
-      offset,
-      limit,
-      has_more: offset + page.length < sorted.length,
-    };
+  if (!query) {
+    // Members first, then admin-verified, then the scraped directory.
+    edited.sort(
+      (a, b) =>
+        editRank(b) - editRank(a) ||
+        normalizeDisplayName(a.full_name).localeCompare(normalizeDisplayName(b.full_name), undefined, {
+          sensitivity: "base",
+        })
+    );
+    const editedPage = edited.slice(offset, offset + limit);
+    const remaining = limit - editedPage.length;
+    const { rows, total: dirTotal } = await browseDirectory(
+      filters,
+      Math.max(0, offset - edited.length),
+      remaining
+    );
+    const results = [
+      ...editedPage.map((p) => toSearchResult(p, 0, ["browse"], authenticated)),
+      ...rows.map((r) => toSearchResult(rowToMerged(r), 0, ["browse"], authenticated)),
+    ];
+    const total = edited.length + dirTotal;
+    return { results, total, offset, limit, has_more: offset + results.length < total };
   }
 
   let queryVec: Float32Array | null = null;
@@ -189,50 +226,50 @@ export async function searchCareers(params: SearchParams): Promise<{
     console.error("Query embed failed:", err);
   }
 
-  const scored = filtered.map((profile) => {
-    const { score: kwScore, reasons } = keywordScore(profile, query);
-    let semantic = 0;
-    if (queryVec && profile.embedding) {
-      let dot = 0;
-      for (let i = 0; i < queryVec.length; i++) dot += queryVec[i] * profile.embedding[i];
-      semantic = dot;
-      if (semantic > 0.35) reasons.push("semantic");
-    }
-    const total = kwScore + semantic;
-    return { profile, total, reasons: [...new Set(reasons)] };
-  });
+  const editedScored = edited
+    .map((profile) => {
+      const { score: kw, reasons } = keywordScore(profile, query);
+      let semantic = 0;
+      if (queryVec && profile.embedding) {
+        for (let i = 0; i < queryVec.length; i++) semantic += queryVec[i] * profile.embedding[i];
+        if (semantic > 0.35) reasons.push("semantic");
+      }
+      return { profile, total: kw + semantic, reasons: [...new Set(reasons)] };
+    })
+    .filter((s) => s.total > 0.05 || query.length <= 2);
 
-  scored.sort((a, b) => {
-    if (b.total !== a.total) return b.total - a.total;
-    return normalizeDisplayName(a.profile.full_name).localeCompare(
-      normalizeDisplayName(b.profile.full_name),
-      undefined,
-      { sensitivity: "base" }
-    );
-  });
+  const { rows, total: dirTotal } = await searchDirectory(query, queryVec, filters, offset + limit);
 
-  const ranked = scored.filter((s) => s.total > 0.05 || query.length <= 2);
-  const page = ranked.slice(offset, offset + limit);
+  const merged = [
+    ...editedScored.map((s) => ({
+      score: s.total,
+      name: normalizeDisplayName(s.profile.full_name),
+      result: () => toSearchResult(s.profile, s.total, s.reasons, authenticated),
+    })),
+    ...rows.map((r) => ({
+      score: r.score,
+      name: normalizeDisplayName(r.full_name),
+      result: () => toSearchResult(rowToMerged(r), r.score, r.reasons, authenticated),
+    })),
+  ].sort(
+    (a, b) => b.score - a.score || a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+  );
 
-  return {
-    results: page.map((s) => toSearchResult(s.profile, s.total, s.reasons, authenticated)),
-    total: ranked.length,
-    offset,
-    limit,
-    has_more: offset + page.length < ranked.length,
-  };
+  const results = merged.slice(offset, offset + limit).map((m) => m.result());
+  const total = Math.min(editedScored.length + dirTotal, MAX_SEARCH_DEPTH + limit);
+  return { results, total, offset, limit, has_more: offset + results.length < total };
 }
 
 export async function resolveMergedProfile(uid: string): Promise<MergedCareerProfile | null> {
-  const { overrides, adminEdits } = await loadAllOverrides();
+  const [overrides, adminEdits] = await Promise.all([loadOverrides(), loadAdminEdits()]);
   const override = overrides.find((o) => (o.player_uid || `user:${o.user_id}`) === uid);
-  if (override) return overrideToMerged(override);
+  const admin = override ? undefined : adminEdits.find((a) => a.player_uid === uid);
 
-  const admin = adminEdits.find((a) => a.player_uid === uid);
-  if (admin) return adminEditToMerged(admin);
-
-  const { getMergedByUid } = await import("./loader");
-  return getMergedByUid(uid);
+  const scraped = uid.startsWith("user:") ? null : await getScrapedByUid(uid);
+  if (override) return overrideToMerged(override, scraped);
+  if (admin) return adminEditToMerged(admin, scraped);
+  if (!scraped) return null;
+  return markVoteVerified(scrapedToMerged(scraped), await loadVerifiedLinkedIn(uid));
 }
 
 export async function getProfileForDisplay(
@@ -244,65 +281,58 @@ export async function getProfileForDisplay(
     can_claim: boolean;
     can_attempt_claim: boolean;
     claimed_by_other: boolean;
+    is_owner: boolean;
   }) | null
 > {
-  const { overrides } = await loadAllOverrides();
+  const overrides = await loadOverrides();
   const merged = await resolveMergedProfile(uid);
   if (!merged) return null;
-
-  if (!isEligibleForCareersSearch(merged)) {
-    return null;
-  }
+  if (!isEligibleForCareersSearch(merged)) return null;
 
   const override = overrides.find((o) => (o.player_uid || `user:${o.user_id}`) === uid);
+  const isOwner = Boolean(override && requestingUserId && override.user_id === requestingUserId);
 
   if (override) {
-    const isOwner = Boolean(requestingUserId && override.user_id === requestingUserId);
-    const claimedByOther = Boolean(requestingUserId && !isOwner);
     return {
       ...merged,
       can_claim: false,
       can_attempt_claim: false,
-      claimed_by_other: claimedByOther,
+      claimed_by_other: Boolean(requestingUserId && !isOwner),
+      is_owner: isOwner,
     };
   }
 
-  const existingClaim = overrides.find((o) => o.player_uid === uid);
-  const claimedByOther = Boolean(
-    existingClaim && requestingUserId && existingClaim.user_id !== requestingUserId
-  );
-  const canClaim = authenticated && !existingClaim && Boolean(requestingUserId);
-  const canAttemptClaim =
-    authenticated && Boolean(requestingUserId) && (!existingClaim || claimedByOther);
-
-  if (!authenticated) {
+  if (!authenticated || !requestingUserId) {
     return {
       ...merged,
-      full_name: merged.full_name,
       linkedin_url: null,
       email: null,
       open_to_career_chats: false,
       can_claim: false,
       can_attempt_claim: false,
       claimed_by_other: false,
+      is_owner: false,
     };
   }
 
   return {
     ...merged,
-    can_claim: canClaim,
-    can_attempt_claim: canAttemptClaim,
-    claimed_by_other: claimedByOther,
+    can_claim: true,
+    can_attempt_claim: true,
+    claimed_by_other: false,
+    is_owner: false,
   };
 }
 
 export async function findClaimCandidates(userFullName: string, limit = 5) {
-  const { overrides } = await loadAllOverrides();
-  const scraped = getAllScrapedMerged();
+  const overrides = await loadOverrides();
   const claimed = new Set(overrides.map((o) => o.player_uid).filter(Boolean));
-
-  const { namesMatch } = await import("./names");
-  return scraped
-    .filter((p) => !claimed.has(p.player_uid) && namesMatch(p.full_name, userFullName))
+  const candidates = (await findNameCandidates(userFullName, 50))
+    .filter((c) => !claimed.has(c.player_uid) && namesMatch(c.full_name, userFullName))
     .slice(0, limit);
+  const scraped = await getScrapedByUids(candidates.map((c) => c.player_uid));
+  return candidates
+    .map((c) => scraped.get(c.player_uid))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p))
+    .map(scrapedToMerged);
 }

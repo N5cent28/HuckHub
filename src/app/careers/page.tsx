@@ -18,6 +18,7 @@ const PAGE_SIZE = 30;
 interface Meta {
   generated_at: string;
   n_profiles: number;
+  n_with_career: number;
 }
 
 function CareersSearchContent() {
@@ -294,7 +295,7 @@ function CareersSearchContent() {
 
           {meta && (
             <p className="text-xs text-slate-400 mt-3">
-              {meta.n_profiles.toLocaleString()} indexed profiles
+              {meta.n_profiles.toLocaleString()} players · {meta.n_with_career.toLocaleString()} with career info
               {lastUpdated && ` · Last updated ${lastUpdated}`}
             </p>
           )}

@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "export": "next build && next export",
-    "prepare-careers": "python3 scripts/prepare-careers-data.py"
+    "export": "next build && next export"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

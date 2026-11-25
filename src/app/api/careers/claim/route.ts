@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/careers/auth";
 import { createServerClient } from "@/lib/supabase";
-import { getMergedByUid } from "@/lib/careers/loader";
+import { getScrapedByUid } from "@/lib/careers/directory";
+import { isAgeGated } from "@/lib/careers/age";
+import { scrapedToMerged } from "@/lib/careers/merge";
 import { namesMatch } from "@/lib/careers/names";
 import { embedCareerFields } from "@/lib/careers/embed";
 import { buildEmbedSourceText } from "@/lib/careers/merge";
@@ -18,7 +20,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "player_uid is required" }, { status: 400 });
   }
 
-  const scraped = getMergedByUid(player_uid);
+  const scrapedRow = await getScrapedByUid(player_uid);
+  const scraped = scrapedRow && !isAgeGated(scrapedRow) ? scrapedToMerged(scrapedRow) : null;
   if (!scraped) {
     return NextResponse.json({ error: "Profile not found in index" }, { status: 404 });
   }

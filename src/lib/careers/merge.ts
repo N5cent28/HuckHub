@@ -1,6 +1,12 @@
 import { normalizeLinkedInUrls } from "./linkedin";
-import { loadCareersDataset, scrapedToMerged } from "./loader";
-import { EMBEDDING_DIM } from "./loader";
+import type {
+  CareerAdminEdit,
+  CareerProfileOverride,
+  MergedCareerProfile,
+  ScrapedCareerProfile,
+} from "./types";
+
+const EMBEDDING_DIM = 384;
 
 export function buildEmbedSourceText(fields: {
   career_field?: string | null;
@@ -24,21 +30,45 @@ export function buildEmbedSourceText(fields: {
   return parts.join(". ");
 }
 
-export function overrideToMerged(override: CareerProfileOverride): MergedCareerProfile {
-  const dataset = loadCareersDataset();
-  const scraped = override.player_uid ? dataset.profiles.get(override.player_uid) : null;
-  const teams_played = override.player_uid ? dataset.teamsPlayed.get(override.player_uid) || [] : [];
-  const teams_coached = override.player_uid ? dataset.teamsCoached.get(override.player_uid) || [] : [];
+function toVector(raw: number[] | null): Float32Array | null {
+  return raw && raw.length === EMBEDDING_DIM ? new Float32Array(raw) : null;
+}
 
-  let embedding: Float32Array | null = null;
-  if (override.embedding && override.embedding.length === EMBEDDING_DIM) {
-    embedding = new Float32Array(override.embedding);
-  }
+export function scrapedToMerged(p: ScrapedCareerProfile): MergedCareerProfile {
+  const urls = normalizeLinkedInUrls(p);
+  return {
+    player_uid: p.player_uid,
+    full_name: p.full_name,
+    career_field: p.career_field,
+    current_role: p.current_role,
+    education: p.education,
+    career_summary: p.career_summary,
+    confidence_score: p.confidence_score,
+    // Set from community/admin votes by the caller (see loadVerifiedLinkedIn).
+    linkedin_verified: false,
+    linkedin_url: urls[0] ?? null,
+    linkedin_urls: urls,
+    llm_rationale: p.llm_rationale,
+    known_locations: p.known_locations,
+    teams_played: p.teams_played,
+    teams_coached: p.teams_coached,
+    provenance: "inferred",
+    is_user_edited: false,
+    is_admin_edited: false,
+    open_to_career_chats: false,
+    email: null,
+    adult_from_year: p.adult_from_year,
+    embedding: null,
+  };
+}
 
+export function overrideToMerged(
+  override: CareerProfileOverride,
+  scraped: ScrapedCareerProfile | null | undefined
+): MergedCareerProfile {
   return {
     player_uid: override.player_uid || `user:${override.user_id}`,
     full_name: override.full_name,
-    source: scraped?.source || "user",
     career_field: override.career_field,
     current_role: override.current_role,
     education: override.education,
@@ -49,39 +79,25 @@ export function overrideToMerged(override: CareerProfileOverride): MergedCareerP
     linkedin_urls: normalizeLinkedInUrls({ linkedin_url: override.linkedin_url }),
     llm_rationale: scraped?.llm_rationale ?? null,
     known_locations: override.known_locations || [],
-    teams_played,
-    teams_coached,
+    teams_played: scraped?.teams_played ?? [],
+    teams_coached: scraped?.teams_coached ?? [],
     provenance: "user",
     is_user_edited: true,
     is_admin_edited: false,
     open_to_career_chats: override.open_to_career_chats,
     email: override.email,
-    age_point_estimate_2026: scraped?.age_point_estimate_2026 ?? null,
-    age_min_2026: scraped?.age_min_2026 ?? null,
-    age_max_2026: scraped?.age_max_2026 ?? null,
-    age_source: scraped?.age_source ?? null,
-    age_confidence: scraped?.age_confidence ?? null,
-    embed_source_text: override.embed_source_text,
-    embedding,
-    embedding_index: null,
+    adult_from_year: scraped?.adult_from_year ?? null,
+    embedding: toVector(override.embedding),
   };
 }
 
-export function adminEditToMerged(edit: CareerAdminEdit): MergedCareerProfile {
-  const dataset = loadCareersDataset();
-  const scraped = dataset.profiles.get(edit.player_uid);
-  const teams_played = dataset.teamsPlayed.get(edit.player_uid) || [];
-  const teams_coached = dataset.teamsCoached.get(edit.player_uid) || [];
-
-  let embedding: Float32Array | null = null;
-  if (edit.embedding && edit.embedding.length === EMBEDDING_DIM) {
-    embedding = new Float32Array(edit.embedding);
-  }
-
+export function adminEditToMerged(
+  edit: CareerAdminEdit,
+  scraped: ScrapedCareerProfile | null | undefined
+): MergedCareerProfile {
   return {
     player_uid: edit.player_uid,
     full_name: edit.full_name,
-    source: scraped?.source || "admin",
     career_field: edit.career_field,
     current_role: edit.current_role,
     education: edit.education,
@@ -92,57 +108,42 @@ export function adminEditToMerged(edit: CareerAdminEdit): MergedCareerProfile {
     linkedin_urls: normalizeLinkedInUrls({ linkedin_url: edit.linkedin_url }),
     llm_rationale: scraped?.llm_rationale ?? null,
     known_locations: edit.known_locations || [],
-    teams_played,
-    teams_coached,
+    teams_played: scraped?.teams_played ?? [],
+    teams_coached: scraped?.teams_coached ?? [],
     provenance: "admin",
     is_user_edited: false,
     is_admin_edited: true,
     open_to_career_chats: false,
     email: null,
-    age_point_estimate_2026: scraped?.age_point_estimate_2026 ?? null,
-    age_min_2026: scraped?.age_min_2026 ?? null,
-    age_max_2026: scraped?.age_max_2026 ?? null,
-    age_source: scraped?.age_source ?? null,
-    age_confidence: scraped?.age_confidence ?? null,
-    embed_source_text: edit.embed_source_text,
-    embedding,
-    embedding_index: null,
+    adult_from_year: scraped?.adult_from_year ?? null,
+    embedding: toVector(edit.embedding),
   };
 }
 
-export function mergeProfiles(
-  scrapedList: MergedCareerProfile[],
+/**
+ * Member overrides win over admin edits, which win over scraped data.
+ * Returns the edited profiles (scraped-only rows stay in Postgres).
+ */
+export function mergeEditedProfiles(
   overrides: CareerProfileOverride[],
-  adminEdits: CareerAdminEdit[] = []
+  adminEdits: CareerAdminEdit[],
+  scrapedByUid: Map<string, ScrapedCareerProfile>
 ): MergedCareerProfile[] {
-  const userOverrideUids = new Set(
-    overrides.map((o) => o.player_uid).filter(Boolean) as string[]
-  );
-  const adminEditUids = new Set(adminEdits.map((a) => a.player_uid));
-
+  const userOverrideUids = new Set(overrides.map((o) => o.player_uid).filter(Boolean) as string[]);
   const merged: MergedCareerProfile[] = [];
-
-  for (const scraped of scrapedList) {
-    if (userOverrideUids.has(scraped.player_uid)) continue;
-    if (adminEditUids.has(scraped.player_uid)) continue;
-    merged.push(scraped);
-  }
-
   for (const edit of adminEdits) {
     if (userOverrideUids.has(edit.player_uid)) continue;
-    merged.push(adminEditToMerged(edit));
+    merged.push(adminEditToMerged(edit, scrapedByUid.get(edit.player_uid)));
   }
-
   for (const override of overrides) {
-    merged.push(overrideToMerged(override));
+    merged.push(overrideToMerged(override, override.player_uid ? scrapedByUid.get(override.player_uid) : null));
   }
-
   return merged;
 }
 
 export function overrideFromForm(
   userId: string,
-  existing: CareerProfileOverride | null,
+  existing: Pick<CareerProfileOverride, "full_name" | "known_locations"> | null,
   body: Record<string, unknown>
 ): Partial<CareerProfileOverride> {
   const knownLocations = Array.isArray(body.known_locations)

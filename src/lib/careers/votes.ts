@@ -30,6 +30,46 @@ function tallyAspect(bucket: AspectVoteStats, vote: string): void {
     bucket.total > 0 ? Math.round((bucket.accurate / bucket.total) * 100) : null;
 }
 
+/** Member "accurate" votes needed (with accurate > inaccurate) to verify a LinkedIn link. */
+export const LINKEDIN_VERIFY_MIN_MEMBER_VOTES = 2;
+
+export interface LinkedInVoteRow {
+  player_uid: string;
+  voter_user_id: string;
+  vote: string;
+  linkedin_url: string | null;
+}
+
+/**
+ * (player_uid, linkedin_url) pairs that count as "LinkedIn verified":
+ *   - the admin voted the link accurate (an admin "inaccurate" vote vetoes), or
+ *   - >= LINKEDIN_VERIFY_MIN_MEMBER_VOTES accurate votes and accurate > inaccurate.
+ */
+export function verifiedLinkedInPairs(
+  rows: LinkedInVoteRow[],
+  adminUserId: string
+): { player_uid: string; linkedin_url: string }[] {
+  const tally = new Map<string, { uid: string; url: string; up: number; down: number; admin?: string }>();
+  for (const r of rows) {
+    const url = r.linkedin_url?.trim();
+    if (!url) continue;
+    const key = `${r.player_uid}\u0000${url}`;
+    const t = tally.get(key) ?? { uid: r.player_uid, url, up: 0, down: 0 };
+    if (r.vote === "accurate") t.up += 1;
+    else if (r.vote === "inaccurate") t.down += 1;
+    if (r.voter_user_id === adminUserId) t.admin = r.vote;
+    tally.set(key, t);
+  }
+  const out: { player_uid: string; linkedin_url: string }[] = [];
+  for (const t of tally.values()) {
+    const verified =
+      t.admin === "accurate" ||
+      (t.admin !== "inaccurate" && t.up >= LINKEDIN_VERIFY_MIN_MEMBER_VOTES && t.up > t.down);
+    if (verified) out.push({ player_uid: t.uid, linkedin_url: t.url });
+  }
+  return out;
+}
+
 export function buildProfileVoteStats(
   allVotes: { aspect: string; vote: string; voter_user_id: string; linkedin_url?: string | null }[],
   requestingUserId?: string,

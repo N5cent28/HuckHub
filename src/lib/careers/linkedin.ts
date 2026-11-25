@@ -1,5 +1,6 @@
 const MAX_LINKEDIN_CANDIDATES = 2;
 
+
 export function normalizeLinkedInUrls(profile: {
   linkedin_url?: string | null;
   linkedin_urls?: string[] | null;
