@@ -35,20 +35,10 @@ export default function ClaimProfilePage() {
       .catch(console.error);
   }, [authLoading, authenticated, token, router]);
 
-  const handleClaim = async (player_uid: string) => {
+  // Claiming happens on the profile page (LinkedIn verification lives there).
+  const handleClaim = (player_uid: string) => {
     setClaiming(player_uid);
-    setMessage("");
-    try {
-      await careersFetch("/api/careers/claim", {
-        method: "POST",
-        token,
-        body: JSON.stringify({ player_uid }),
-      });
-      router.push("/careers/me/edit");
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Claim failed");
-      setClaiming(null);
-    }
+    router.push(`/careers/profile/${encodeURIComponent(player_uid)}?claim=1`);
   };
 
   if (authLoading) {

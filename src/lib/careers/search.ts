@@ -1,10 +1,12 @@
 import type { CareerSearchResult, MergedCareerProfile } from "./types";
 import {
   confidenceLabel,
+  nameMatchScore,
   namesMatch,
   normalizeDisplayName,
-  normalizeNameForMatch,
-  summaryNamePrefix,
+  HIDDEN_NAME,
+  redactName,
+  redactedSummaryPrefix,
 } from "./names";
 import { isEligibleForCareersSearch } from "./age";
 import { locationMatchesProfile } from "./locations";
@@ -17,6 +19,7 @@ import {
   findNameCandidates,
   getScrapedByUid,
   getScrapedByUids,
+  loadSuppressedUids,
   searchDirectory,
   type DirectoryFilters,
   type DirectoryRow,
@@ -42,7 +45,14 @@ const MAX_SEARCH_DEPTH = 600;
  * the ~120K scraped profiles are filtered, scored, and paged in Postgres.
  */
 async function loadEditedProfiles(): Promise<MergedCareerProfile[]> {
-  const [overrides, adminEdits] = await Promise.all([loadOverrides(), loadAdminEdits()]);
+  const [allOverrides, allAdminEdits, suppressed] = await Promise.all([
+    loadOverrides(),
+    loadAdminEdits(),
+    loadSuppressedUids(),
+  ]);
+  // Admin edits are kept for removed profiles (so a removal can be undone); hide them.
+  const overrides = allOverrides.filter((o) => !o.player_uid || !suppressed.has(o.player_uid));
+  const adminEdits = allAdminEdits.filter((a) => !suppressed.has(a.player_uid));
   const uids = [
     ...overrides.map((o) => o.player_uid).filter(Boolean),
     ...adminEdits.map((a) => a.player_uid),
@@ -56,16 +66,10 @@ function keywordScore(profile: MergedCareerProfile, query: string): { score: num
   const reasons: string[] = [];
   let score = 0;
 
-  const nameNorm = normalizeDisplayName(profile.full_name).toLowerCase();
-  const queryNorm = normalizeNameForMatch(query);
-  const profileNorm = normalizeNameForMatch(profile.full_name);
-
-  if (queryNorm && profileNorm === queryNorm) {
-    score += 5;
-    reasons.push("exact_name");
-  } else if (nameNorm.includes(q) || q.split(/\s+/).every((t) => nameNorm.includes(t))) {
-    score += 1.2;
-    reasons.push("name");
+  const nameScore = nameMatchScore(profile.full_name, query);
+  if (nameScore > 0) {
+    score += nameScore;
+    reasons.push(nameScore === 5 ? "exact_name" : "name");
   }
 
   const locs = [
@@ -130,18 +134,18 @@ function toSearchResult(
   matchReasons: string[],
   authenticated: boolean
 ): CareerSearchResult {
+  // Signed-out visitors never receive the real name (the UI blur is cosmetic).
+  const hide = (text: string | null) => (authenticated ? text : redactName(text, profile.full_name));
+  const summary = hide(profile.career_summary);
   return {
     player_uid: profile.player_uid,
-    full_name: normalizeDisplayName(profile.full_name),
+    full_name: authenticated ? normalizeDisplayName(profile.full_name) : HIDDEN_NAME,
     name_blurred: !authenticated,
-    career_field: profile.career_field,
-    current_role: profile.current_role,
-    education: profile.education,
-    career_summary: profile.career_summary,
-    career_summary_name_prefix:
-      !authenticated && profile.career_summary
-        ? summaryNamePrefix(profile.full_name, profile.career_summary)
-        : null,
+    career_field: hide(profile.career_field),
+    current_role: hide(profile.current_role),
+    education: hide(profile.education),
+    career_summary: summary,
+    career_summary_name_prefix: authenticated ? null : redactedSummaryPrefix(summary),
     known_locations: profile.known_locations,
     confidence_score: profile.confidence_score,
     confidence_label: confidenceLabel(
@@ -196,10 +200,13 @@ export async function searchCareers(params: SearchParams): Promise<{
   };
 
   if (!query) {
-    // Members first, then admin-verified, then the scraped directory.
+    // Members first, then admin-verified, then the scraped directory
+    // (by confidence when Min confidence is set, otherwise alphabetical).
+    const byConfidence = params.min_confidence != null;
     edited.sort(
       (a, b) =>
         editRank(b) - editRank(a) ||
+        (byConfidence ? (b.confidence_score ?? 0) - (a.confidence_score ?? 0) : 0) ||
         normalizeDisplayName(a.full_name).localeCompare(normalizeDisplayName(b.full_name), undefined, {
           sensitivity: "base",
         })
@@ -261,7 +268,12 @@ export async function searchCareers(params: SearchParams): Promise<{
 }
 
 export async function resolveMergedProfile(uid: string): Promise<MergedCareerProfile | null> {
-  const [overrides, adminEdits] = await Promise.all([loadOverrides(), loadAdminEdits()]);
+  const [overrides, adminEdits, suppressed] = await Promise.all([
+    loadOverrides(),
+    loadAdminEdits(),
+    loadSuppressedUids(),
+  ]);
+  if (suppressed.has(uid)) return null;
   const override = overrides.find((o) => (o.player_uid || `user:${o.user_id}`) === uid);
   const admin = override ? undefined : adminEdits.find((a) => a.player_uid === uid);
 

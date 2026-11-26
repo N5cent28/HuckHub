@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { careersFetch } from "@/lib/careers/client";
 import { linkedInButtonLabel } from "@/lib/careers/linkedin";
 import type { ProfileVoteStats, VoteAspect, VoteValue } from "@/lib/careers/votes";
@@ -31,12 +31,15 @@ function VoteButtons({
   disabled: boolean;
   onVote: (vote: VoteValue) => void;
 }) {
+  // Clicking the selected button again clears the vote (handled by the parent).
   return (
     <div className="flex flex-wrap gap-2 shrink-0">
       <button
         type="button"
         disabled={disabled}
         onClick={() => onVote("accurate")}
+        aria-pressed={current === "accurate"}
+        title={current === "accurate" ? "Click again to clear your vote" : undefined}
         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs border transition-colors ${
           current === "accurate"
             ? "bg-emerald-50 border-emerald-300 text-emerald-800"
@@ -49,6 +52,8 @@ function VoteButtons({
         type="button"
         disabled={disabled}
         onClick={() => onVote("inaccurate")}
+        aria-pressed={current === "inaccurate"}
+        title={current === "inaccurate" ? "Click again to clear your vote" : undefined}
         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs border transition-colors ${
           current === "inaccurate"
             ? "bg-red-50 border-red-300 text-red-800"
@@ -107,6 +112,8 @@ export function ProfileCommunityVotes({
   initialStats: ProfileVoteStats;
 }) {
   const [stats, setStats] = useState(initialStats);
+  // Follow the parent when it reloads the profile (e.g. after sign-in finishes).
+  useEffect(() => setStats(initialStats), [initialStats]);
   const [voting, setVoting] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -116,6 +123,9 @@ export function ProfileCommunityVotes({
     linkedinUrl?: string
   ) => {
     if (!authenticated || !token) return;
+    const current =
+      aspect === "overall" ? stats.user_votes.overall : stats.user_votes.linkedin?.[linkedinUrl ?? ""];
+    const sending: VoteValue | "clear" = current === vote ? "clear" : vote;
     setVoting(true);
     setMessage("");
     try {
@@ -125,7 +135,7 @@ export function ProfileCommunityVotes({
         body: JSON.stringify({
           player_uid: playerUid,
           aspect,
-          vote,
+          vote: sending,
           linkedin_url: linkedinUrl,
         }),
       });
@@ -148,9 +158,9 @@ export function ProfileCommunityVotes({
       </h2>
 
       <VoteRow
-        label="Overall profile"
+        label="Profile info (career, education, summary)"
         stats={stats.overall}
-        statLabel="this profile looks accurate"
+        statLabel="say the profile info is accurate"
         current={stats.user_votes.overall}
         disabled={voting}
         onVote={(vote) => handleVote("overall", vote)}

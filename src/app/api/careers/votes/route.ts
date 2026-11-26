@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
   if (!VALID_ASPECTS.includes(aspect)) {
     return NextResponse.json({ error: "Invalid aspect" }, { status: 400 });
   }
-  if (!VALID_VOTES.includes(vote)) {
+  const clearing = vote === "clear";
+  if (!clearing && !VALID_VOTES.includes(vote)) {
     return NextResponse.json({ error: "Invalid vote" }, { status: 400 });
   }
 
@@ -73,6 +74,15 @@ export async function POST(req: NextRequest) {
       : existingQuery.is("linkedin_url", null);
 
   const { data: existing } = await existingQuery.maybeSingle();
+
+  if (clearing) {
+    if (existing) {
+      const { error: delError } = await sb.from("career_profile_votes").delete().eq("id", existing.id);
+      if (delError) return NextResponse.json({ error: delError.message }, { status: 500 });
+    }
+    const cleared = await loadVoteStatsForProfile(player_uid, user.id, candidates);
+    return NextResponse.json({ stats: cleared, message: "Vote cleared." });
+  }
 
   const row = {
     player_uid,

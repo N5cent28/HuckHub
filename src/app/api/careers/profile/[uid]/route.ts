@@ -3,7 +3,7 @@ import { getAuthUser } from "@/lib/careers/auth";
 import { getProfileForDisplay } from "@/lib/careers/search";
 import { loadVoteStatsForProfile } from "@/lib/careers/db";
 import { normalizeLinkedInUrls } from "@/lib/careers/linkedin";
-import { summaryNamePrefix, normalizeDisplayName } from "@/lib/careers/names";
+import { HIDDEN_NAME, normalizeDisplayName, redactName, redactedSummaryPrefix } from "@/lib/careers/names";
 import { isAdmin } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
@@ -22,23 +22,22 @@ export async function GET(
     }
 
     const authenticated = Boolean(user);
-    const summaryPrefix =
-      !authenticated && profile.career_summary
-        ? summaryNamePrefix(profile.full_name, profile.career_summary)
-        : null;
+    // Signed-out visitors never receive the real name (the UI blur is cosmetic).
+    const hide = (text: string | null) => (authenticated ? text : redactName(text, profile.full_name));
+    const summary = hide(profile.career_summary);
 
     const linkedInUrls = authenticated ? normalizeLinkedInUrls(profile) : [];
     const voteStats = await loadVoteStatsForProfile(uid, user?.id, linkedInUrls);
 
     const payload = {
       player_uid: profile.player_uid,
-      full_name: normalizeDisplayName(profile.full_name),
+      full_name: authenticated ? normalizeDisplayName(profile.full_name) : HIDDEN_NAME,
       name_blurred: !authenticated,
-      career_field: profile.career_field,
-      current_role: profile.current_role,
-      education: profile.education,
-      career_summary: profile.career_summary,
-      career_summary_name_prefix: summaryPrefix,
+      career_field: hide(profile.career_field),
+      current_role: hide(profile.current_role),
+      education: hide(profile.education),
+      career_summary: summary,
+      career_summary_name_prefix: authenticated ? null : redactedSummaryPrefix(summary),
       known_locations: profile.known_locations,
       teams_played: profile.teams_played,
       teams_coached: profile.teams_coached,
@@ -46,7 +45,7 @@ export async function GET(
       linkedin_verified: profile.linkedin_verified,
       linkedin_url: authenticated ? profile.linkedin_url : null,
       linkedin_urls: linkedInUrls,
-      llm_rationale: profile.llm_rationale,
+      llm_rationale: hide(profile.llm_rationale),
       provenance: profile.provenance,
       is_user_edited: profile.is_user_edited,
       is_admin_edited: profile.is_admin_edited,

@@ -1,7 +1,9 @@
--- HuckHub Careers: "LinkedIn verified only" means community/admin verified.
+-- HuckHub Careers: "LinkedIn verified only" checkbox = community/admin verified.
 --
--- Replaces the confidence-threshold version of the filter from
--- 20261122_careers_directory_pg.sql. Verification is decided in the app from
+-- The Min confidence slider (p_min_confidence) is unchanged. This only redefines
+-- the LinkedIn checkbox, which 20261122_careers_directory_pg.sql had treated as
+-- "has a link and confidence >= 0.7". Also: confidence-ordered browse when Min
+-- confidence is set, and tiered name scoring in career_search. Verification is decided in the app from
 -- career_profile_votes (admin "accurate" vote, or >= 2 accurate member votes
 -- with accurate > inaccurate) and passed in as (player_uid, linkedin_url)
 -- pairs. A pair only counts while that URL is still one of the profile's
@@ -75,13 +77,28 @@ begin
       and (p_min_confidence is null or coalesce(p.confidence_score, 0) >= p_min_confidence)
       and not (p.player_uid = any(p_exclude_uids));
 
+    if p_min_confidence is not null then
+      -- Min confidence set with no query: most confident first.
+      return query
+      select p.player_uid, p.full_name, p.career_field, p."current_role", p.education,
+             p.career_summary, p.confidence_score, coalesce(p.linkedin_urls, '{}'),
+             career_known_locations(p.id), v_total
+      from career_profiles p
+      where (p.adult_from_year is null or p.adult_from_year <= v_year)
+        and coalesce(p.confidence_score, 0) >= p_min_confidence
+        and not (p.player_uid = any(p_exclude_uids))
+      order by p.confidence_score desc nulls last, p.has_career desc, p.name_norm
+      offset greatest(p_offset, 0)
+      limit greatest(p_limit, 0);
+      return;
+    end if;
+
     return query
     select p.player_uid, p.full_name, p.career_field, p."current_role", p.education,
            p.career_summary, p.confidence_score, coalesce(p.linkedin_urls, '{}'),
            career_known_locations(p.id), v_total
     from career_profiles p
     where (p.adult_from_year is null or p.adult_from_year <= v_year)
-      and (p_min_confidence is null or coalesce(p.confidence_score, 0) >= p_min_confidence)
       and not (p.player_uid = any(p_exclude_uids))
     order by p.has_career desc, p.name_norm
     offset greatest(p_offset, 0)
@@ -102,7 +119,8 @@ begin
   counted as (select count(*) as n from matched),
   page as (
     select * from matched
-    order by has_career desc, name_norm
+    order by case when p_min_confidence is not null then confidence_score end desc nulls last,
+             has_career desc, name_norm
     offset greatest(p_offset, 0)
     limit greatest(p_limit, 0)
   )
@@ -110,7 +128,8 @@ begin
          pg.career_summary, pg.confidence_score, coalesce(pg.linkedin_urls, '{}'),
          career_known_locations(pg.id), c.n
   from page pg cross join counted c
-  order by pg.has_career desc, pg.name_norm;
+  order by case when p_min_confidence is not null then pg.confidence_score end desc nulls last,
+           pg.has_career desc, pg.name_norm;
 end;
 $$;
 
@@ -159,6 +178,10 @@ declare
   v_ql text := lower(btrim(coalesce(p_query, '')));
   v_qn text := btrim(coalesce(p_query_norm, ''));
   v_name_tokens text[] := array_remove(string_to_array(v_qn, ' '), '');
+  -- Every query word starts a name word, in order ("noah nicol" ~ "noah ryan nicol").
+  -- Tokens are [a-z0-9] only (normalizeNameForMatch), so they are regex-safe.
+  v_name_re text := '(^| )' || array_to_string(
+    array_remove(string_to_array(btrim(coalesce(p_query_norm, '')), ' '), ''), '[^ ]*( [^ ]+)* ');
   v_kw_tokens text[];
   v_tsq tsquery;
   v_vec halfvec(384);
@@ -248,12 +271,19 @@ begin
   scored as (
     select e.id, e.player_uid, e.full_name, e.name_norm, e.career_field, e."current_role",
            e.education, e.career_summary, e.confidence_score, e.linkedin_urls,
+           -- Name tiers (mirrored in names.ts nameMatchScore): a strong name
+           -- match should outrank keyword/semantic/profile-quality signals.
            case
-             when v_qn <> '' and e.name_norm = v_qn then 5.0
-             when v_qn <> '' and (strpos(e.name_norm, v_qn) > 0
+             when v_qn = '' then 0.0
+             when e.name_norm = v_qn then 5.0
+             when strpos(' ' || e.name_norm, ' ' || v_qn) > 0 then 3.0
+             when e.name_norm ~ v_name_re then 2.0
+             when cardinality(v_name_tokens) > 1
+                  and strpos(' ' || e.name_norm || ' ', ' ' || v_name_tokens[1] || ' ') > 0 then 1.5
+             when strpos(e.name_norm, v_qn) > 0
                   or (cardinality(v_name_tokens) > 0
-                      and (select bool_and(strpos(e.name_norm, tok) > 0) from unnest(v_name_tokens) tok)))
-               then 1.2
+                      and (select bool_and(strpos(e.name_norm, tok) > 0) from unnest(v_name_tokens) tok))
+               then 0.6
              else 0.0
            end as s_name,
            case when e.id = any(v_qloc) then 0.9 else 0.0 end as s_loc,

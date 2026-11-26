@@ -241,3 +241,15 @@ export async function suppressProfile(
     p_requested_by: requestedBy,
   });
 }
+
+/** Undo a removal. True if the profile is back now; false if it returns at the next publish. */
+export async function restoreProfile(playerUid: string): Promise<boolean> {
+  return rpc<boolean>("career_restore_profile", { p_uid: playerUid });
+}
+
+/** player_uids removed from the directory (small; used to hide their member/admin edits). */
+export async function loadSuppressedUids(): Promise<Set<string>> {
+  const { data, error } = await db().from("career_profile_suppressions").select("player_uid");
+  if (error) throw new Error(`career_profile_suppressions: ${error.message}`);
+  return new Set((data || []).map((r) => r.player_uid as string));
+}

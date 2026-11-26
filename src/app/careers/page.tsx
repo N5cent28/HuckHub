@@ -15,6 +15,55 @@ import { Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 
 const PAGE_SIZE = 30;
 
+/** Last results + scroll spot, so "back" from a profile doesn't re-search or jump to the top. */
+const RESULTS_CACHE_KEY = "careers:lastResults";
+const RESULTS_CACHE_TTL_MS = 30 * 60 * 1000;
+
+interface CachedResults {
+  key: string;
+  savedAt: number;
+  results: CareerSearchResult[];
+  total: number;
+  hasMore: boolean;
+  scrollY?: number;
+  lastUid?: string;
+}
+
+function readResultsCache(): CachedResults | null {
+  try {
+    const raw = sessionStorage.getItem(RESULTS_CACHE_KEY);
+    if (!raw) return null;
+    const c = JSON.parse(raw) as CachedResults;
+    return Date.now() - c.savedAt < RESULTS_CACHE_TTL_MS ? c : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeResultsCache(c: CachedResults): void {
+  try {
+    sessionStorage.setItem(RESULTS_CACHE_KEY, JSON.stringify(c));
+  } catch {
+    /* storage full or blocked: fall back to normal re-search */
+  }
+}
+
+/** Remember where the user was when they opened a profile. */
+function rememberScroll(uid: string): void {
+  const c = readResultsCache();
+  if (c) writeResultsCache({ ...c, scrollY: window.scrollY, lastUid: uid });
+}
+
+function restoreScroll(c: CachedResults): void {
+  requestAnimationFrame(() => {
+    if (c.scrollY != null) {
+      window.scrollTo(0, c.scrollY);
+    } else if (c.lastUid) {
+      document.getElementById(`career-card-${c.lastUid}`)?.scrollIntoView({ block: "start" });
+    }
+  });
+}
+
 interface Meta {
   generated_at: string;
   n_profiles: number;
@@ -30,6 +79,9 @@ function CareersSearchContent() {
   const [locations, setLocations] = useState<string[]>([]);
   const [divisions, setDivisions] = useState<string[]>([]);
   const [query, setQuery] = useState("");
+  // What actually gets searched: updated after typing pauses, or on Enter/Search.
+  // Each search is a server call plus a query embedding, so no per-keystroke searches.
+  const [submittedQuery, setSubmittedQuery] = useState("");
   const [location, setLocation] = useState("");
   const [division, setDivision] = useState("");
   const [minConfidence, setMinConfidence] = useState(0);
@@ -50,6 +102,7 @@ function CareersSearchContent() {
     const parsed = parseCareersSearchParams(urlParams);
     skipUrlSync.current = true;
     setQuery(parsed.query);
+    setSubmittedQuery(parsed.query);
     setLocation(parsed.location);
     setDivision(parsed.division);
     setMinConfidence(parsed.minConfidence);
@@ -71,7 +124,7 @@ function CareersSearchContent() {
       minConfidence: number;
       linkedinOnly: boolean;
     }) => {
-      const q = criteria?.query ?? query;
+      const q = criteria?.query ?? submittedQuery;
       const loc = criteria?.location ?? location;
       const div = criteria?.division ?? division;
       const conf = criteria?.minConfidence ?? minConfidence;
@@ -89,6 +142,16 @@ function CareersSearchContent() {
       if (fetchKey === lastFetched.current) return;
       lastFetched.current = fetchKey;
 
+      const cacheKey = JSON.stringify({
+        q: q.trim(),
+        loc: loc.trim(),
+        div: div.trim(),
+        conf,
+        linkedin,
+        pageIndex,
+        authed: Boolean(token),
+      });
+
       if (!skipUrlSync.current) {
         const qs = buildCareersSearchQuery({
           query: q,
@@ -101,6 +164,19 @@ function CareersSearchContent() {
         router.replace(qs ? `/careers?${qs}` : "/careers", { scroll: false });
       }
       skipUrlSync.current = false;
+
+      const cached = readResultsCache();
+      // Only reuse results when coming back from a profile (a spot was saved).
+      if (cached && cached.key === cacheKey && (cached.scrollY != null || cached.lastUid)) {
+        setResults(cached.results);
+        setTotal(cached.total);
+        setHasMore(cached.hasMore);
+        setPage(pageIndex);
+        restoreScroll(cached);
+        // Clear the saved spot so later filter changes don't jump around.
+        writeResultsCache({ ...cached, scrollY: undefined, lastUid: undefined });
+        return;
+      }
 
       setSearching(true);
       setError("");
@@ -122,13 +198,20 @@ function CareersSearchContent() {
         setTotal(data.total as number);
         setHasMore(data.has_more as boolean);
         setPage(pageIndex);
+        writeResultsCache({
+          key: cacheKey,
+          savedAt: Date.now(),
+          results: data.results as CareerSearchResult[],
+          total: data.total as number,
+          hasMore: data.has_more as boolean,
+        });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Search failed");
       } finally {
         setSearching(false);
       }
     },
-    [query, location, division, minConfidence, linkedinOnly, token, router]
+    [submittedQuery, location, division, minConfidence, linkedinOnly, token, router]
   );
 
   const runSearchFromStart = useCallback(() => {
@@ -139,10 +222,17 @@ function CareersSearchContent() {
   useEffect(() => {
     if (authLoading) return;
     runSearch(page);
-  }, [authLoading, query, location, division, minConfidence, linkedinOnly, page, token, runSearch]);
+  }, [authLoading, submittedQuery, location, division, minConfidence, linkedinOnly, page, token, runSearch]);
+
+  // Search ~0.7s after the user stops typing.
+  useEffect(() => {
+    if (query === submittedQuery) return;
+    const t = setTimeout(() => setSubmittedQuery(query), 700);
+    return () => clearTimeout(t);
+  }, [query, submittedQuery]);
 
   const returnQuery = buildCareersSearchQuery({
-    query,
+    query: submittedQuery,
     location,
     division,
     minConfidence,
@@ -196,7 +286,11 @@ function CareersSearchContent() {
                     setQuery(e.target.value);
                     setPage(0);
                   }}
-                  onKeyDown={(e) => e.key === "Enter" && runSearchFromStart()}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    if (query !== submittedQuery) setSubmittedQuery(query);
+                    else runSearchFromStart();
+                  }}
                   placeholder="Name, city, or career field…"
                   className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400"
                 />
@@ -210,7 +304,10 @@ function CareersSearchContent() {
               </button>
               <button
                 type="button"
-                onClick={runSearchFromStart}
+                onClick={() => {
+                  if (query !== submittedQuery) setSubmittedQuery(query);
+                  else runSearchFromStart();
+                }}
                 disabled={searching}
                 className="bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white font-medium px-6 py-2.5 rounded-lg"
               >
@@ -310,7 +407,7 @@ function CareersSearchContent() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-800">
-              {query ? "Results" : "Browse"}
+              {submittedQuery ? "Results" : "Browse"}
               {total > 0 && (
                 <span className="text-slate-500 font-normal text-base ml-1">
                   ({pageStart}–{pageEnd} of {total})
@@ -331,12 +428,13 @@ function CareersSearchContent() {
           ) : (
             <div className="grid gap-3">
               {results.map((p) => (
-                <ProfileCard
+                <div
                   key={p.player_uid}
-                  profile={p}
-                  authenticated={authenticated}
-                  returnQuery={returnQuery}
-                />
+                  id={`career-card-${p.player_uid}`}
+                  onClickCapture={() => rememberScroll(p.player_uid)}
+                >
+                  <ProfileCard profile={p} authenticated={authenticated} returnQuery={returnQuery} />
+                </div>
               ))}
             </div>
           )}

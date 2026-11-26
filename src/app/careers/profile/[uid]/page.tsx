@@ -11,6 +11,7 @@ import { linkedInButtonLabel } from "@/lib/careers/linkedin";
 import { formatTeamDivision } from "@/lib/careers/teams";
 import { ProfileCommunityVotes } from "@/components/careers/ProfileCommunityVotes";
 import { RemoveProfileSection } from "@/components/careers/RemoveProfileSection";
+import { ClaimProfilePanel } from "@/components/careers/ClaimProfilePanel";
 import type { ProfileVoteStats } from "@/lib/careers/votes";
 import type { TeamEntry } from "@/lib/careers/types";
 import { UserCheck, Pencil, ExternalLink } from "lucide-react";
@@ -87,10 +88,11 @@ function CareerProfileContent() {
   const uid = decodeURIComponent(params.uid as string);
   const fromQuery = searchParams.get("from");
   const backHref = fromQuery ? `/careers?${fromQuery}` : "/careers";
-  const { token, authenticated } = useCareersAuth();
+  const { token, authenticated, loading: authLoading } = useCareersAuth();
   const [profile, setProfile] = useState<ProfileDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [claiming, setClaiming] = useState(false);
+  // Open the claim panel automatically when returning from LinkedIn (?claim=1).
+  const [showClaimPanel, setShowClaimPanel] = useState(searchParams.get("claim") === "1");
   const [message, setMessage] = useState("");
   const [showDisputeForm, setShowDisputeForm] = useState(false);
   const [disputeMsg, setDisputeMsg] = useState("");
@@ -98,37 +100,34 @@ function CareerProfileContent() {
   const [submittingDispute, setSubmittingDispute] = useState(false);
 
   useEffect(() => {
+    // Wait for the session so the first response already includes this user's votes,
+    // and drop responses from superseded requests (e.g. a token refresh mid-flight).
+    if (authLoading) return;
+    let cancelled = false;
     careersFetch(`/api/careers/profile/${encodeURIComponent(uid)}`, { token })
-      .then((d) => setProfile(d.profile))
+      .then((d) => {
+        if (!cancelled) setProfile(d.profile as ProfileDetail);
+      })
       .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [uid, token]);
-
-  const handleClaim = async () => {
-    setClaiming(true);
-    setMessage("");
-    setShowDisputeForm(false);
-    try {
-      const data = await careersFetch("/api/careers/claim", {
-        method: "POST",
-        token,
-        body: JSON.stringify({ player_uid: uid }),
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
-      setMessage(data.message);
-      window.location.href = "/careers/me/edit";
-    } catch (e) {
-      const err = e as Error & { code?: string; can_dispute?: boolean };
-      if (err.code === "already_claimed" && err.can_dispute) {
-        setShowDisputeForm(true);
-        setMessage(
-          "Another member has already claimed this profile. If this is really you, submit a dispute and we will review it."
-        );
-      } else {
-        setMessage(err.message);
-      }
-    } finally {
-      setClaiming(false);
-    }
+    return () => {
+      cancelled = true;
+    };
+  }, [uid, token, authLoading]);
+
+  const handleClaimed = (msg: string) => {
+    setMessage(msg);
+    window.location.href = "/careers/me/edit";
+  };
+
+  const handleAlreadyClaimed = () => {
+    setShowClaimPanel(false);
+    setShowDisputeForm(true);
+    setMessage(
+      "Another member has already claimed this profile. If this is really you, submit a dispute and we will review it."
+    );
   };
 
   const handleDispute = async () => {
@@ -318,16 +317,25 @@ function CareerProfileContent() {
               <p className="text-sm text-sky-700 bg-sky-50 border border-sky-100 rounded-lg px-3 py-2">{message}</p>
             )}
 
-            {authenticated && profile.can_attempt_claim && !showDisputeForm && (
+            {authenticated && profile.can_attempt_claim && !showDisputeForm && !showClaimPanel && (
               <button
                 type="button"
-                onClick={handleClaim}
-                disabled={claiming}
-                className="inline-flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60"
+                onClick={() => setShowClaimPanel(true)}
+                className="inline-flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
               >
                 <UserCheck className="h-4 w-4" />
-                {claiming ? "Claiming…" : "Is this you? Claim this profile"}
+                Is this you? Claim this profile
               </button>
+            )}
+
+            {authenticated && profile.can_attempt_claim && !showDisputeForm && showClaimPanel && (
+              <ClaimProfilePanel
+                playerUid={uid}
+                token={token}
+                onClaimed={handleClaimed}
+                onAlreadyClaimed={handleAlreadyClaimed}
+                onCancel={() => setShowClaimPanel(false)}
+              />
             )}
 
             {authenticated && showDisputeForm && (

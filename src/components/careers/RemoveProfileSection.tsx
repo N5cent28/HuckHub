@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { careersFetch } from "@/lib/careers/client";
 
 /**
- * "Don't want to be listed?" — owners (claimed, or signed in with a matching
- * HuckHub name) are removed immediately; anyone else files a request that an
- * admin reviews. No account is required to ask.
+ * "Don't want to be listed?" (sign-in required). Owners (claimed, or HuckHub
+ * name matches) get one instant removal per account; anything else becomes a
+ * request an admin reviews. Owners can also release a claim that isn't them.
  */
 export function RemoveProfileSection({
   playerUid,
@@ -21,28 +22,31 @@ export function RemoveProfileSection({
 }) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
-  const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ removed: boolean; message: string } | null>(null);
+  const [result, setResult] = useState<{ done: boolean; message: string } | null>(null);
   const [error, setError] = useState("");
 
-  const submit = async () => {
-    if (isOwner && !window.confirm("Remove your profile from HuckHub Careers? This can't be undone from the site.")) {
-      return;
-    }
+  if (!authenticated) {
+    return (
+      <p className="text-xs text-slate-400">
+        Is this you and you&apos;d rather not be listed?{" "}
+        <Link
+          href={`/auth/login?next=/careers/profile/${encodeURIComponent(playerUid)}`}
+          className="underline hover:text-slate-600"
+        >
+          Sign in to request removal
+        </Link>
+      </p>
+    );
+  }
+
+  const run = async (path: string, init: RequestInit, confirmText: string) => {
+    if (!window.confirm(confirmText)) return;
     setSubmitting(true);
     setError("");
     try {
-      const data = await careersFetch("/api/careers/remove", {
-        method: "POST",
-        token,
-        body: JSON.stringify({
-          player_uid: playerUid,
-          message: message.trim() || undefined,
-          contact_email: email.trim() || undefined,
-        }),
-      });
-      setResult({ removed: Boolean(data.removed), message: String(data.message) });
+      const data = await careersFetch(path, { ...init, token });
+      setResult({ done: data.removed !== false, message: String(data.message) });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed");
     } finally {
@@ -50,15 +54,30 @@ export function RemoveProfileSection({
     }
   };
 
+  const remove = () =>
+    run(
+      "/api/careers/remove",
+      { method: "POST", body: JSON.stringify({ player_uid: playerUid, message: message.trim() || undefined }) },
+      isOwner
+        ? "Remove your profile from HuckHub Careers? It will no longer appear in search."
+        : "Request removal of this profile?"
+    );
+
+  const release = () =>
+    run(
+      "/api/careers/claim",
+      { method: "DELETE" },
+      "Release your claim on this profile? Your edits are deleted and it goes back to its original listing. This counts toward your account's claim limit."
+    );
+
   if (result) {
     return (
       <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-        {result.message}
-        {result.removed && (
-          <>
-            {" "}
-            <a href="/careers" className="text-sky-600 underline">Back to search</a>
-          </>
+        {result.message}{" "}
+        {result.done && (
+          <a href="/careers" className="text-sky-600 underline">
+            Back to search
+          </a>
         )}
       </p>
     );
@@ -66,27 +85,26 @@ export function RemoveProfileSection({
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="text-xs text-slate-400 hover:text-slate-600 underline"
-      >
-        {isOwner ? "Remove my profile from HuckHub Careers" : "Is this you and you'd rather not be listed? Request removal"}
-      </button>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        <button type="button" onClick={() => setOpen(true)} className="text-xs text-slate-400 hover:text-slate-600 underline">
+          {isOwner ? "Remove my profile from HuckHub Careers" : "Is this you and you'd rather not be listed? Request removal"}
+        </button>
+        {isOwner && (
+          <button type="button" onClick={release} disabled={submitting} className="text-xs text-slate-400 hover:text-slate-600 underline">
+            This isn&apos;t me — release claim
+          </button>
+        )}
+      </div>
     );
   }
 
   return (
     <div className="border border-slate-200 rounded-lg p-4 bg-slate-50 space-y-3">
-      <h3 className="font-semibold text-slate-800 text-sm">
-        {isOwner ? "Remove your profile" : "Remove this profile"}
-      </h3>
+      <h3 className="font-semibold text-slate-800 text-sm">{isOwner ? "Remove your profile" : "Remove this profile"}</h3>
       <p className="text-sm text-slate-600">
         {isOwner
           ? "This hides your career profile and team history from HuckHub Careers and keeps it out of future data refreshes."
-          : authenticated
-            ? "If your HuckHub profile name matches this one, it's removed right away. Otherwise we'll review your request."
-            : "We'll review your request and email you once the profile is removed. You don't need a HuckHub account."}
+          : "If your HuckHub profile name matches this one, it's removed right away. Otherwise we'll review your request."}
       </p>
       {!isOwner && (
         <div>
@@ -99,23 +117,11 @@ export function RemoveProfileSection({
           />
         </div>
       )}
-      {!authenticated && (
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Your email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white"
-            placeholder="you@example.com"
-          />
-        </div>
-      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={submit}
+          onClick={remove}
           disabled={submitting}
           className="text-sm bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg disabled:opacity-60"
         >

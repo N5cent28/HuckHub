@@ -9,14 +9,30 @@ async function getExtractor(): Promise<FeatureExtractionPipeline> {
   return extractor;
 }
 
+/** Recent query vectors per warm function instance (paging and repeat searches skip the model). */
+const QUERY_CACHE_MAX = 500;
+const queryCache = new Map<string, Float32Array>();
+
 export async function embedText(text: string): Promise<Float32Array> {
   const trimmed = text.trim();
   if (!trimmed) {
     return new Float32Array(384);
   }
+  const key = trimmed.toLowerCase();
+  const hit = queryCache.get(key);
+  if (hit) {
+    queryCache.delete(key);
+    queryCache.set(key, hit); // keep recently used entries
+    return hit;
+  }
   const model = await getExtractor();
   const output = await model(trimmed, { pooling: "mean", normalize: true });
-  return new Float32Array(output.data as Float32Array);
+  const vec = new Float32Array(output.data as Float32Array);
+  queryCache.set(key, vec);
+  if (queryCache.size > QUERY_CACHE_MAX) {
+    queryCache.delete(queryCache.keys().next().value as string);
+  }
+  return vec;
 }
 
 export async function embedCareerFields(fields: {

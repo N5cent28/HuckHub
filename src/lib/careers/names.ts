@@ -68,3 +68,63 @@ export function summaryNamePrefix(fullName: string, summary: string | null): str
 
   return null;
 }
+
+/**
+ * Name relevance tiers (mirrored in SQL career_search):
+ *   5   exact normalized name
+ *   3   query starts at a word boundary ("nico r" -> "nico ranabhat", or a surname)
+ *   2   every query word starts a name word, in order ("noah nicol" -> "noah ryan nicol")
+ *   1.5 the first query word is a whole name word ("nico r" -> "nico nijhawan")
+ *   0.6 looser: query or each query word appears anywhere in the name
+ */
+export function nameMatchScore(fullName: string, query: string): number {
+  const name = normalizeNameForMatch(fullName);
+  const q = normalizeNameForMatch(query);
+  if (!q || !name) return 0;
+  if (name === q) return 5;
+  if ((" " + name).includes(" " + q)) return 3;
+  const tokens = q.split(" ").filter(Boolean);
+  const inOrder = new RegExp("(^| )" + tokens.join("[^ ]*( [^ ]+)* "));
+  if (inOrder.test(name)) return 2;
+  if (tokens.length > 1 && ` ${name} `.includes(` ${tokens[0]} `)) return 1.5;
+  if (name.includes(q) || tokens.every((t) => name.includes(t))) return 0.6;
+  return 0;
+}
+
+/** Shown (blurred) in place of a real name for signed-out visitors. */
+export const HIDDEN_NAME = "Ultimate Player";
+const NAME_TOKEN_MASK = "[name]";
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Remove a person's name from free text for signed-out responses. Replaces the
+ * full name (either order) and then each name word (2+ letters) as a whole word.
+ * The blur in the UI is cosmetic; this is what actually keeps names private.
+ */
+export function redactName(text: string | null, fullName: string): string | null {
+  if (!text) return text;
+  const display = normalizeDisplayName(fullName);
+  const words = display
+    .split(/\s+/)
+    .map((w) => w.replace(/[^\p{L}\p{N}'-]/gu, ""))
+    .filter((w) => w.length >= 2);
+  let out = text;
+  const variants = [display, fullName.trim(), words.slice().reverse().join(" ")].filter(
+    (v) => v.length >= 2
+  );
+  for (const v of variants.sort((a, b) => b.length - a.length)) {
+    out = out.replace(new RegExp(escapeRegExp(v), "gi"), NAME_TOKEN_MASK);
+  }
+  for (const w of words) {
+    out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(w)}(?![\\p{L}\\p{N}])`, "giu"), NAME_TOKEN_MASK);
+  }
+  return out;
+}
+
+/** Leading "[name]" in a redacted summary, so the UI can blur it like a real name. */
+export function redactedSummaryPrefix(summary: string | null): string | null {
+  return summary?.startsWith(NAME_TOKEN_MASK) ? NAME_TOKEN_MASK : null;
+}
