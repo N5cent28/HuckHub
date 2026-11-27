@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ConfidenceBadge } from "./ConfidenceBadge";
 import { BlurredName, BlurredSummary } from "./BlurredText";
+import { ProfileAvatar } from "./ProfileAvatar";
 import type { CareerSearchResult } from "@/lib/careers/types";
 
 export function ProfileCard({
@@ -22,7 +23,8 @@ export function ProfileCard({
       className="block bg-white border border-slate-200 rounded-xl p-4 hover:border-sky-300 hover:shadow-md transition-all"
     >
       <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-        <h3 className="font-semibold text-slate-900 text-lg">
+        <h3 className="font-semibold text-slate-900 text-lg flex items-center gap-2.5">
+          <ProfileAvatar url={profile.avatar_url} size={32} />
           {authenticated ? (
             profile.full_name
           ) : (

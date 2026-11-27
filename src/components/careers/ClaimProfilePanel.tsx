@@ -25,6 +25,7 @@ export function ClaimProfilePanel({
   const [linkedInName, setLinkedInName] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [skipPhoto, setSkipPhoto] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -57,7 +58,11 @@ export function ClaimProfilePanel({
       const data = await careersFetch("/api/careers/claim", {
         method: "POST",
         token,
-        body: JSON.stringify({ player_uid: playerUid, linkedin_url: linkedinUrl.trim() || undefined }),
+        body: JSON.stringify({
+          player_uid: playerUid,
+          linkedin_url: linkedinUrl.trim() || undefined,
+          use_linkedin_photo: !skipPhoto,
+        }),
       });
       onClaimed(String(data.message));
     } catch (e) {
@@ -107,6 +112,16 @@ export function ClaimProfilePanel({
           className="w-full border border-sky-200 rounded-lg px-2 py-1.5 text-sm bg-white"
         />
       </div>
+
+      <label className="flex items-center gap-2 text-sm text-sky-900 cursor-pointer w-fit">
+        <input
+          type="checkbox"
+          checked={skipPhoto}
+          onChange={(e) => setSkipPhoto(e.target.checked)}
+          className="rounded border-sky-300 text-sky-600"
+        />
+        Do not use my LinkedIn profile photo on HuckHub
+      </label>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

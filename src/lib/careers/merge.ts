@@ -58,6 +58,7 @@ export function scrapedToMerged(p: ScrapedCareerProfile): MergedCareerProfile {
     open_to_career_chats: false,
     email: null,
     adult_from_year: p.adult_from_year,
+    avatar_url: null,
     embedding: null,
   };
 }
@@ -87,6 +88,7 @@ export function overrideToMerged(
     open_to_career_chats: override.open_to_career_chats,
     email: override.email,
     adult_from_year: scraped?.adult_from_year ?? null,
+    avatar_url: override.avatar_url ?? null,
     embedding: toVector(override.embedding),
   };
 }
@@ -116,6 +118,7 @@ export function adminEditToMerged(
     open_to_career_chats: false,
     email: null,
     adult_from_year: scraped?.adult_from_year ?? null,
+    avatar_url: null,
     embedding: toVector(edit.embedding),
   };
 }

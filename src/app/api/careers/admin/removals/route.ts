@@ -3,6 +3,7 @@ import { getAuthUser } from "@/lib/careers/auth";
 import { isAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase";
 import { getScrapedByUids, restoreProfile, suppressProfile } from "@/lib/careers/directory";
+import { deleteAvatar } from "@/lib/careers/avatar";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +96,7 @@ async function revokeClaim(sb: ReturnType<typeof createServerClient>, userId: st
     .maybeSingle();
   if (!claim?.player_uid) return false;
   await sb.from("career_profile_overrides").delete().eq("id", claim.id);
+  await deleteAvatar(sb, userId);
   await sb.from("career_claim_events").insert({
     user_id: userId,
     player_uid: claim.player_uid,

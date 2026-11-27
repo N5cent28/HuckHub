@@ -20,6 +20,9 @@ export default function EditCareerProfilePage() {
     email: "",
     open_to_career_chats: false,
   });
+  const [hasPhoto, setHasPhoto] = useState(false);
+  const [photoAvailable, setPhotoAvailable] = useState(false);
+  const [showPhoto, setShowPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -43,7 +46,10 @@ export default function EditCareerProfilePage() {
             email: d.profile.email || "",
             open_to_career_chats: d.profile.open_to_career_chats || false,
           });
+          setHasPhoto(Boolean(d.profile.avatar_url));
+          setShowPhoto(Boolean(d.profile.avatar_url));
         }
+        setPhotoAvailable(Boolean(d.linkedin_photo_available));
       })
       .catch(console.error);
   }, [authLoading, authenticated, token, router]);
@@ -59,6 +65,7 @@ export default function EditCareerProfilePage() {
         body: JSON.stringify({
           ...form,
           known_locations: form.known_locations.split(",").map((s) => s.trim()).filter(Boolean),
+          show_linkedin_photo: showPhoto !== hasPhoto ? showPhoto : undefined,
         }),
       });
       setMessage("Profile saved. Your details now appear in search.");
@@ -160,6 +167,18 @@ export default function EditCareerProfilePage() {
             />
             Open to career chats
           </label>
+
+          {(photoAvailable || hasPhoto) && (
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showPhoto}
+                onChange={(e) => setShowPhoto(e.target.checked)}
+                className="rounded border-slate-300 text-sky-600"
+              />
+              Show my LinkedIn profile photo (signed-in members only)
+            </label>
+          )}
 
           {message && (
             <p className={`text-sm ${message.includes("saved") ? "text-emerald-700" : "text-red-600"}`}>{message}</p>

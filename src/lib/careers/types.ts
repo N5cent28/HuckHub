@@ -43,6 +43,7 @@ export interface CareerProfileOverride {
   open_to_career_chats: boolean;
   embed_source_text: string | null;
   embedding: number[] | null;
+  avatar_url?: string | null;
   claimed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -88,6 +89,8 @@ export interface MergedCareerProfile {
   open_to_career_chats: boolean;
   email: string | null;
   adult_from_year: number | null;
+  /** LinkedIn photo copied at claim time (members only; null otherwise). */
+  avatar_url: string | null;
   /** Only set for member/admin edits (stored in Supabase); scraped vectors stay in Postgres. */
   embedding: Float32Array | null;
 }
@@ -109,6 +112,7 @@ export interface CareerSearchResult {
   is_user_edited: boolean;
   is_admin_edited: boolean;
   open_to_career_chats: boolean;
+  avatar_url: string | null;
   score: number;
   match_reasons: string[];
 }

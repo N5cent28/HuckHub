@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase";
 import { getScrapedByUid, suppressProfile } from "@/lib/careers/directory";
 import { namesMatch } from "@/lib/careers/names";
 import { sendRemovalRequestEmail } from "@/lib/careers/email";
+import { deleteAvatar } from "@/lib/careers/avatar";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
     await sb.from("career_profile_overrides").delete().eq("id", claim.id);
+    await deleteAvatar(sb, user.id);
     return NextResponse.json({ removed: true, message: "Your profile has been removed from HuckHub Careers." });
   }
 
@@ -77,6 +79,7 @@ export async function POST(req: NextRequest) {
     await suppressProfile(playerUid, "owner_request", user.id);
     if (claim?.user_id === user.id) {
       await sb.from("career_profile_overrides").delete().eq("id", claim.id);
+      await deleteAvatar(sb, user.id);
       await sb.from("career_claim_events").insert({
         user_id: user.id,
         player_uid: playerUid,

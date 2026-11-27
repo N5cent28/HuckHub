@@ -12,6 +12,7 @@ import { formatTeamDivision } from "@/lib/careers/teams";
 import { ProfileCommunityVotes } from "@/components/careers/ProfileCommunityVotes";
 import { RemoveProfileSection } from "@/components/careers/RemoveProfileSection";
 import { ClaimProfilePanel } from "@/components/careers/ClaimProfilePanel";
+import { ProfileAvatar } from "@/components/careers/ProfileAvatar";
 import type { ProfileVoteStats } from "@/lib/careers/votes";
 import type { TeamEntry } from "@/lib/careers/types";
 import { UserCheck, Pencil, ExternalLink } from "lucide-react";
@@ -78,6 +79,7 @@ interface ProfileDetail {
   can_attempt_claim: boolean;
   claimed_by_other: boolean;
   is_owner: boolean;
+  avatar_url: string | null;
   vote_stats: ProfileVoteStats;
   is_admin: boolean;
 }
@@ -199,7 +201,9 @@ function CareerProfileContent() {
         <article className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="bg-gradient-to-r from-sky-50 to-white px-6 py-8 border-b border-slate-100">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
+              <div className="flex items-start gap-4">
+                <ProfileAvatar url={profile.avatar_url} size={64} />
+                <div>
                 <h1 className="text-2xl font-bold text-slate-900">
                   {authenticated ? (
                     profile.full_name
@@ -215,6 +219,7 @@ function CareerProfileContent() {
                 {profile.known_locations.length > 0 && (
                   <p className="text-slate-500 text-sm mt-1">{profile.known_locations.join(" · ")}</p>
                 )}
+                </div>
               </div>
               <ProfileConfidence
                 score={profile.confidence_score}

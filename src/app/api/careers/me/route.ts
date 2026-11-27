@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase";
 import { embedCareerFields } from "@/lib/careers/embed";
 import { overrideFromForm, buildEmbedSourceText } from "@/lib/careers/merge";
 import type { CareerProfileOverride } from "@/lib/careers/types";
+import { deleteAvatar, linkedInPictureUrl, storeLinkedInAvatar } from "@/lib/careers/avatar";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ profile: data });
+  return NextResponse.json({ profile: data, linkedin_photo_available: Boolean(linkedInPictureUrl(user)) });
 }
 
 export async function PUT(req: NextRequest) {
@@ -60,8 +61,18 @@ export async function PUT(req: NextRequest) {
     }
   }
 
+  // "Show my LinkedIn photo" toggle (undefined = leave as is).
+  let avatarUrl: string | null = existing?.avatar_url ?? null;
+  if (body.show_linkedin_photo === false && avatarUrl) {
+    await deleteAvatar(sb, user.id);
+    avatarUrl = null;
+  } else if (body.show_linkedin_photo === true && !avatarUrl) {
+    avatarUrl = await storeLinkedInAvatar(sb, user);
+  }
+
   const row = {
     ...partial,
+    avatar_url: avatarUrl,
     embed_source_text: embedText,
     embedding,
     user_id: user.id,

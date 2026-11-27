@@ -7,6 +7,7 @@ import { scrapedToMerged } from "@/lib/careers/merge";
 import { namesMatch } from "@/lib/careers/names";
 import { embedCareerFields } from "@/lib/careers/embed";
 import { buildEmbedSourceText } from "@/lib/careers/merge";
+import { deleteAvatar, storeLinkedInAvatar } from "@/lib/careers/avatar";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -167,10 +168,15 @@ export async function POST(req: NextRequest) {
     console.error("Claim embed failed:", err);
   }
 
+  // LinkedIn photo unless the member opted out ("do not use my LinkedIn photo").
+  const avatarUrl =
+    body.use_linkedin_photo === false ? null : await storeLinkedInAvatar(sb, user);
+
   const row = {
     user_id: user.id,
     player_uid,
     full_name: userName,
+    avatar_url: avatarUrl,
     career_field: fields.career_field,
     current_role: fields.current_role,
     education: fields.education,
@@ -259,6 +265,7 @@ export async function DELETE(req: NextRequest) {
 
   const { error } = await sb.from("career_profile_overrides").delete().eq("id", claim.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await deleteAvatar(sb, user.id);
 
   await sb.from("career_claim_events").insert({
     user_id: user.id,

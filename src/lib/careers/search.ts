@@ -158,6 +158,8 @@ function toSearchResult(
     is_user_edited: profile.is_user_edited,
     is_admin_edited: profile.is_admin_edited,
     open_to_career_chats: authenticated ? profile.open_to_career_chats : false,
+    // A face identifies someone as much as a name does: members only.
+    avatar_url: authenticated ? profile.avatar_url : null,
     score,
     match_reasons: matchReasons,
   };

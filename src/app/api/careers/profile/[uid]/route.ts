@@ -46,6 +46,7 @@ export async function GET(
       linkedin_url: authenticated ? profile.linkedin_url : null,
       linkedin_urls: linkedInUrls,
       llm_rationale: hide(profile.llm_rationale),
+      avatar_url: authenticated ? profile.avatar_url : null,
       provenance: profile.provenance,
       is_user_edited: profile.is_user_edited,
       is_admin_edited: profile.is_admin_edited,
